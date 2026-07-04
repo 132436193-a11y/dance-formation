@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>ダンスフォーメーションアプリ - メモ＆多機能テンプレ版</title>
+    <title>ダンスフォーメーションアプリ - ログイン修正版</title>
     <style>
         * { box-sizing: border-box; font-family: sans-serif; margin: 0; padding: 0; }
         body { background-color: #f1f5f9; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
@@ -13,16 +13,16 @@
         .status-badge { font-size: 14px; font-weight: bold; background-color: #334155; padding: 4px 10px; border-radius: 20px; }
         .logout-btn { background-color: #ef4444; color: white; border: none; padding: 4px 8px; border-radius: 4px; font-size: 11px; cursor: pointer; }
 
-        /* ② コントロールとメモ（キャンバスの上、状況に応じて変化） */
+        /* ② 指示メモパネル */
         .top-info-panel { background-color: #1e293b; color: white; padding: 6px 12px; font-size: 13px; display: flex; flex-direction: column; gap: 4px; border-bottom: 1px solid #334155; }
-        .memo-box { background-color: #fffae6; color: #7a5f00; padding: 8px; border-radius: 6px; border-left: 4px solid #d97706; font-weight: bold; font-size: 14px; margin-top: 2px; }
+        .memo-box { background-color: #fffae6; color: #7a5f00; padding: 8px; border-radius: 6px; border-left: 4px solid #d97706; font-weight: bold; font-size: 14px; margin-top: 2px; width: 100%; }
 
-        /* ③ コンテンツ（中央：キャンバス） */
+        /* ③ コンテンツ（中央キャンバス） */
         .content { flex: 1; background-color: #0f172a; display: flex; justify-content: center; align-items: center; padding: 10px; overflow: hidden; position: relative; }
         canvas { background-color: white; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.3); max-width: 100%; max-height: 100%; aspect-ratio: 1/1; cursor: grab; touch-action: none; }
         canvas:active { cursor: grabbing; }
 
-        /* ④ フッター（最下部：操作関係を整理） */
+        /* ④ フッター */
         .footer { background-color: #ffffff; border-top: 1px solid #cbd5e1; padding: 10px; box-shadow: 0 -2px 10px rgba(0,0,0,0.05); display: flex; flex-direction: column; gap: 6px; }
         .timeline { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px; -webkit-overflow-scrolling: touch; }
         .frame-btn { padding: 6px 12px; font-size: 12px; font-weight: bold; border-radius: 6px; border: 1px solid #cbd5e1; cursor: pointer; white-space: nowrap; transition: all 0.2s; }
@@ -30,12 +30,12 @@
         .control-grid { display: flex; flex-direction: column; gap: 6px; width: 100%; }
         .admin-row-1 { display: flex; align-items: center; justify-content: space-between; gap: 6px; flex-wrap: wrap; }
         
-        /* テンプレートボタン用のスクロールエリア */
+        /* テンプレートのスクロールバー */
         .template-scroll { display: flex; gap: 4px; overflow-x: auto; padding: 2px 0; -webkit-overflow-scrolling: touch; width: 100%; }
         .action-btn { padding: 6px 10px; font-size: 11px; font-weight: bold; background-color: #f1f5f9; color: #334155; border: 1px solid #cbd5e1; border-radius: 6px; cursor: pointer; white-space: nowrap; }
         .add-btn { background-color: #10b981; color: white; border: none; padding: 6px 12px; font-size: 12px; }
         
-        /* ログイン画面 */
+        /* 🔒 ログイン画面用スタイル */
         .login-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background-color: #0f172a; display: flex; justify-content: center; align-items: center; z-index: 999; padding: 20px; }
         .login-card { background-color: white; padding: 30px; border-radius: 12px; width: 100%; max-width: 400px; box-shadow: 0 10px 25px rgba(0,0,0,0.3); text-align: center; }
         .login-card h2 { color: #1e293b; margin-bottom: 20px; font-size: 20px; }
@@ -46,7 +46,7 @@
         .submit-btn { width: 100%; padding: 12px; background-color: #2563eb; color: white; border: none; border-radius: 6px; font-weight: bold; font-size: 14px; cursor: pointer; }
         
         select, input[type="text"], input[type="number"] { padding: 5px; border-radius: 6px; border: 1px solid #cbd5e1; font-size: 12px; }
-        textarea { width: 100%; height: 36px; padding: 4px; border-radius: 6px; border: 1px solid #cbd5e1; font-size: 12px; resize: none; }
+        textarea { width: 100%; height: 40px; padding: 6px; border-radius: 6px; border: 1px solid #cbd5e1; font-size: 12px; resize: none; color: #334155; background-color: white; }
     </style>
 </head>
 <body>
@@ -140,6 +140,7 @@
 
         function buildLoginDropdown() {
             const select = document.getElementById('login-number-select');
+            if(!select) return;
             select.innerHTML = '';
             for(let i = 1; i <= totalCount; i++) {
                 const opt = document.createElement('option');
@@ -149,9 +150,8 @@
             }
         }
 
-        // 初期配置（重なり防止グリッド）
+        // 初期配置（重なり防止）
         function initFirstFrame() {
-            if (formations[0].positions.length > 0) return;
             formations[0].positions = [];
             const cols = 10;
             for(let i = 0; i < totalCount; i++) {
@@ -165,7 +165,7 @@
             }
         }
 
-        // --- ログイン処理 ---
+        // --- ログインタブ切り替え ---
         function switchLoginTab(type) {
             document.getElementById('tab-perf').className = type === 'perf' ? 'tab-btn active' : 'tab-btn';
             document.getElementById('tab-admin').className = type === 'admin' ? 'tab-btn active' : 'tab-btn';
@@ -230,7 +230,7 @@
             canvas.width = size; canvas.height = size;
             ctx.clearRect(0, 0, size, size);
 
-            // ステージ表示
+            // ステージ
             ctx.fillStyle = '#cbd5e1'; ctx.fillRect(0, 0, size, size * 0.12);
             ctx.fillStyle = '#475569'; ctx.font = 'bold 22px sans-serif'; ctx.textAlign = 'center';
             ctx.fillText('ステージ（前）', size / 2, size * 0.08);
@@ -244,7 +244,7 @@
             const currentForm = formations[currentFrameIndex];
             if (!currentForm) return;
 
-            // 他の人たち
+            // 他の人
             currentForm.positions.forEach(pos => {
                 const isMe = (userRole === 'performer' && pos.memberNumber === myMemberNumber);
                 if (isMe) return;
@@ -265,7 +265,7 @@
                 ctx.fillText(pos.memberNumber, drawX, drawY);
             });
 
-            // 自分を目立たせる
+            // 自分
             if (userRole === 'performer') {
                 const myPos = currentForm.positions.find(p => p.memberNumber === myMemberNumber);
                 if (myPos) {
@@ -285,7 +285,6 @@
             }
         }
 
-        // 座標変換とドラッグ
         function getCanvasMousePos(e) {
             const rect = canvas.getBoundingClientRect();
             const clientX = e.touches ? e.touches[0].clientX : e.clientX;
@@ -325,7 +324,7 @@
         canvas.addEventListener('touchmove', handleMove, { passive: false });
         canvas.addEventListener('touchend', handleEnd);
 
-        // --- 🚀 【超進化】9大テンプレートの自動計算ロジック ---
+        // --- 9大テンプレート ---
         window.applyTemplate = function(type) {
             if(userRole !== 'admin') return;
             const currentForm = formations[currentFrameIndex];
@@ -337,50 +336,41 @@
                 const rate = i / (totalCount - 1 || 1);
 
                 if (type === 'line') {
-                    // 1. 横一列
                     x = 120 + rate * 760; y = 550;
                 } else if (type === 'vertLine') {
-                    // 2. 縦一列
                     x = 500; y = 180 + rate * 700;
                 } else if (type === 'circle') {
-                    // 3. 正円
                     const angle = (i / totalCount) * 2 * Math.PI - Math.PI / 2;
                     x = 500 + Math.cos(angle) * 300; y = 550 + Math.sin(angle) * 300;
                 } else if (type === 'vShape') {
-                    // 4. V字
                     const isLeft = i < totalCount / 2;
                     const step = isLeft ? i : (totalCount - 1 - i);
                     x = isLeft ? 500 - (totalCount/2 - i)*12 : 500 + (i - totalCount/2)*12;
                     y = 300 + step * (700 / totalCount * 1.5);
                 } else if (type === 'revVShape') {
-                    // 5. 逆V字
                     const isLeft = i < totalCount / 2;
                     const step = isLeft ? i : (totalCount - 1 - i);
                     x = isLeft ? 500 - (totalCount/2 - i)*12 : 500 + (i - totalCount/2)*12;
                     y = 850 - step * (700 / totalCount * 1.5);
                 } else if (type === 'block') {
-                    // 6. 2列ブロック
                     const half = Math.floor(totalCount / 2);
                     if (i < half) {
-                        x = 150 + (i / (half - 1 || 1)) * 700; y = 450; // 前列
+                        x = 150 + (i / (half - 1 || 1)) * 700; y = 450;
                     } else {
-                        x = 150 + ((i - half) / (totalCount - half - 1 || 1)) * 700; y = 650; // 後列
+                        x = 150 + ((i - half) / (totalCount - half - 1 || 1)) * 700; y = 650;
                     }
                 } else if (type === 'xShape') {
-                    // 7. X字
                     if (i < totalCount / 2) {
                         const r = i / (totalCount / 2 - 1 || 1);
-                        x = 200 + r * 600; y = 250 + r * 600; // 左上から右下
+                        x = 200 + r * 600; y = 250 + r * 600;
                     } else {
                         const r = (i - totalCount / 2) / (totalCount - totalCount / 2 - 1 || 1);
-                        x = 800 - r * 600; y = 250 + r * 600; // 右上から左下
+                        x = 800 - r * 600; y = 250 + r * 600;
                     }
                 } else if (type === 'wave') {
-                    // 8. 波型（S字）
                     x = 120 + rate * 760;
                     y = 550 + Math.sin(rate * Math.PI * 2) * 200;
                 } else if (type === 'random') {
-                    // 9. 散らばり（規則的なバラバラ配置で重なりを防止）
                     x = 150 + (Math.sin(i * 9) * 0.5 + 0.5) * 700;
                     y = 200 + (Math.cos(i * 7) * 0.5 + 0.5) * 650;
                 }
@@ -392,6 +382,7 @@
         // --- UI更新 ---
         function updateUI() {
             const tl = document.getElementById('timeline-list');
+            if(!tl) return;
             tl.innerHTML = '';
             
             formations.forEach((form, idx) => {
@@ -412,23 +403,28 @@
             });
 
             const currentForm = formations[currentFrameIndex];
+            if (!currentForm) return;
             
-            // メモの表示更新
+            // メモ表示
             if(userRole === 'admin') {
-                document.getElementById('frame-name-input').value = currentForm.name;
-                document.getElementById('frame-memo-input').value = currentForm.memo || '';
+                const nameInput = document.getElementById('frame-name-input');
+                const memoInput = document.getElementById('frame-memo-input');
+                if(nameInput) nameInput.value = currentForm.name;
+                if(memoInput) memoInput.value = currentForm.memo || '';
             } else {
                 const memoText = document.getElementById('performer-memo-text');
-                if (currentForm.memo && currentForm.memo.trim() !== '') {
-                    memoText.innerText = `📝 指示: ${currentForm.memo}`;
-                    memoText.style.backgroundColor = '#fffae6';
-                    memoText.style.color = '#7a5f00';
-                    memoText.style.borderLeft = '4px solid #d97706';
-                } else {
-                    memoText.innerText = '💡 このコマの指示メモはまだありません';
-                    memoText.style.backgroundColor = '#f1f5f9';
-                    memoText.style.color = '#64748b';
-                    memoText.style.borderLeft = '4px solid #cbd5e1';
+                if (memoText) {
+                    if (currentForm.memo && currentForm.memo.trim() !== '') {
+                        memoText.innerText = `📝 指示: ${currentForm.memo}`;
+                        memoText.style.backgroundColor = '#fffae6';
+                        memoText.style.color = '#7a5f00';
+                        memoText.style.borderLeft = '4px solid #d97706';
+                    } else {
+                        memoText.innerText = '💡 このコマの指示メモはまだありません';
+                        memoText.style.backgroundColor = '#f1f5f9';
+                        memoText.style.color = '#64748b';
+                        memoText.style.borderLeft = '4px solid #cbd5e1';
+                    }
                 }
             }
             draw();
@@ -454,4 +450,20 @@
                 positions: currentForm.positions.map(p => ({...p}))
             });
             currentFrameIndex = formations.length - 1;
-            update
+            updateUI();
+        };
+
+        document.getElementById('total-count-input').onchange = e => {
+            if(userRole !== 'admin') return;
+            totalCount = Math.max(1, Math.min(150, parseInt(e.target.value) || 70));
+            initFirstFrame();
+            buildLoginDropdown();
+            updateUI();
+        };
+
+        // 初期実行
+        buildLoginDropdown();
+        initFirstFrame();
+    </script>
+</body>
+</html>
