@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>ダンスフォーメーションアプリ - ログイン修正版</title>
+    <title>ダンスフォーメーションアプリ - 動くアニメーション版</title>
     <style>
         * { box-sizing: border-box; font-family: sans-serif; margin: 0; padding: 0; }
         body { background-color: #f1f5f9; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
@@ -29,6 +29,11 @@
         
         .control-grid { display: flex; flex-direction: column; gap: 6px; width: 100%; }
         .admin-row-1 { display: flex; align-items: center; justify-content: space-between; gap: 6px; flex-wrap: wrap; }
+        
+        /* 再生バーエリア */
+        .play-row { display: flex; align-items: center; gap: 10px; background-color: #f8fafc; padding: 6px; border-radius: 8px; border: 1px solid #e2e8f0; }
+        .play-btn { background-color: #2563eb; color: white; border: none; padding: 6px 16px; border-radius: 6px; font-weight: bold; font-size: 13px; cursor: pointer; }
+        .play-btn.playing { background-color: #dc2626; }
         
         /* テンプレートのスクロールバー */
         .template-scroll { display: flex; gap: 4px; overflow-x: auto; padding: 2px 0; -webkit-overflow-scrolling: touch; width: 100%; }
@@ -96,6 +101,15 @@
     </div>
 
     <div class="footer">
+        <div class="play-row">
+            <button id="play-pause-btn" class="play-btn" onclick="togglePlay()">▶️ 再生</button>
+            <div style="font-size: 12px; color: #475569; display: flex; align-items: center; gap: 4px;">
+                <span>移動秒数:</span>
+                <input type="number" id="frame-duration-input" value="3.0" step="0.5" min="0.5" max="10" style="width: 50px; text-align: center;">秒
+                <span id="admin-duration-notice" style="color: #94a3b8; margin-left: 4px;">(次のコマへの移動時間)</span>
+            </div>
+        </div>
+
         <div id="timeline-list" class="timeline"></div>
         
         <div class="control-grid">
@@ -123,7 +137,7 @@
             </div>
 
             <div id="performer-controls" style="display: none; font-size: 12px; color: #475569; font-weight: bold; text-align: center; padding: 4px;">
-                👆 下のコマボタンを押すと、自分の位置と指示メモが切り替わります
+                👆 「▶️ 再生」を押すと、設定された秒数でフォーメーションが自動で動きます！
             </div>
         </div>
     </div>
@@ -134,38 +148,54 @@
         let myMemberNumber = null; 
         let totalCount = 70;
         let currentFrameIndex = 0;
+        
+        // アニメーション用変数
+        let isPlaying = false;
+        let animationStartTime = 0;
+        let animationDuration = 3000; // ミリ秒換算
+        let sourcePositions = []; // アニメーション開始時の座標
+        let targetPositions = []; // アニメーション終了時の座標
+        let nextFrameIndex = 0;
+
         let formations = [
-            { id: 'f1', name: '① オープニング', memo: '最初の立ち位置です。全員綺麗に広がりましょう！', positions: [] }
+            { id: 'f1', name: '① 開幕', memo: '最初の立ち位置です！', duration: 3.0, positions: [] },
+            { id: 'f2', name: '② 展開', memo: '3秒かけて次の位置へ大移動！', duration: 3.0, positions: [] }
         ];
 
         function buildLoginDropdown() {
             const select = document.getElementById('login-number-select');
-            if(!select) return;
-            select.innerHTML = '';
+            if(!select) return; select.innerHTML = '';
             for(let i = 1; i <= totalCount; i++) {
                 const opt = document.createElement('option');
-                opt.value = i;
-                opt.innerText = `${i} 番としてログイン`;
+                opt.value = i; opt.innerText = `${i} 番としてログイン`;
                 select.appendChild(opt);
             }
         }
 
-        // 初期配置（重なり防止）
         function initFirstFrame() {
+            // コマ1
             formations[0].positions = [];
             const cols = 10;
             for(let i = 0; i < totalCount; i++) {
-                const row = Math.floor(i / cols);
-                const col = i % cols;
                 formations[0].positions.push({
                     memberNumber: i + 1,
-                    x: 180 + col * 70,
-                    y: 350 + row * 70
+                    x: 180 + (i % cols) * 70,
+                    y: 320 + Math.floor(i / cols) * 70
+                });
+            }
+            // コマ2（初期は円形にばらけさせておく）
+            formations[1].positions = [];
+            for(let i = 0; i < totalCount; i++) {
+                const angle = (i / totalCount) * 2 * Math.PI - Math.PI / 2;
+                formations[1].positions.push({
+                    memberNumber: i + 1,
+                    x: 500 + Math.cos(angle) * 300,
+                    y: 550 + Math.sin(angle) * 300
                 });
             }
         }
 
-        // --- ログインタブ切り替え ---
+        // --- ログイン処理 ---
         function switchLoginTab(type) {
             document.getElementById('tab-perf').className = type === 'perf' ? 'tab-btn active' : 'tab-btn';
             document.getElementById('tab-admin').className = type === 'admin' ? 'tab-btn active' : 'tab-btn';
@@ -183,17 +213,14 @@
         function loginAsAdmin() {
             const pass = document.getElementById('admin-password').value;
             if(pass === '1234') { 
-                userRole = 'admin';
-                myMemberNumber = null;
+                userRole = 'admin'; myMemberNumber = null;
                 document.getElementById('login-screen').style.display = 'none';
                 setupAppMode();
-            } else {
-                alert('パスワードが違います！(初期値: 1234)');
-            }
+            } else { alert('パスワードが違います！(初期値: 1234)'); }
         }
 
         function logout() {
-            userRole = null; myMemberNumber = null;
+            stopPlay(); userRole = null; myMemberNumber = null;
             document.getElementById('admin-password').value = '';
             document.getElementById('login-screen').style.display = 'flex';
         }
@@ -207,6 +234,8 @@
                 document.getElementById('performer-controls').style.display = 'none';
                 document.getElementById('admin-memo-input-wrap').style.display = 'block';
                 document.getElementById('performer-memo-wrap').style.display = 'none';
+                document.getElementById('frame-duration-input').disabled = false;
+                document.getElementById('admin-duration-notice').style.display = 'inline';
             } else {
                 document.getElementById('display-mode-title').innerText = '📱 出演者専用マイ画面';
                 document.getElementById('status-badge').innerText = `${myMemberNumber}番 の位置`;
@@ -215,22 +244,59 @@
                 document.getElementById('performer-controls').style.display = 'block';
                 document.getElementById('admin-memo-input-wrap').style.display = 'none';
                 document.getElementById('performer-memo-wrap').style.display = 'block';
+                document.getElementById('frame-duration-input').disabled = true; // 出演者は秒数変更不可
+                document.getElementById('admin-duration-notice').style.display = 'none';
             }
             updateUI();
         }
 
-        // --- キャンバス描画 ---
-        const canvas = document.getElementById('stageCanvas');
-        const ctx = canvas.getContext('2d');
-        let isDragging = false;
-        let draggedNumber = null;
+        // --- 自動再生（アニメーション）エンジン ---
+        function togglePlay() {
+            if (isPlaying) { stopPlay(); } else { startPlay(); }
+        }
 
-        function draw() {
-            const size = 600; 
+        function startPlay() {
+            if (formations.length <= 1) { alert('アニメーション再生には、コマが2つ以上必要です！'); return; }
+            isPlaying = true;
+            document.getElementById('play-pause-btn').innerText = '⏸️ 停止';
+            document.getElementById('play-pause-btn').classList.add('playing');
+            
+            // 現在のコマから、次のコマへの移動を設定
+            nextFrameIndex = (currentFrameIndex + 1) % formations.length;
+            const currentForm = formations[currentFrameIndex];
+            
+            // 秒数を読み込んでアニメーション時間を設定
+            const secs = parseFloat(currentForm.duration) || 3.0;
+            animationDuration = secs * 1000;
+            
+            sourcePositions = JSON.parse(JSON.stringify(currentForm.positions));
+            targetPositions = JSON.parse(JSON.stringify(formations[nextFrameIndex].positions));
+            
+            animationStartTime = performance.now();
+            requestAnimationFrame(animateLoop);
+        }
+
+        function stopPlay() {
+            isPlaying = false;
+            document.getElementById('play-pause-btn').innerText = '▶️ 再生';
+            document.getElementById('play-pause-btn').classList.remove('playing');
+            updateUI();
+        }
+
+        function animateLoop(timestamp) {
+            if (!isPlaying) return;
+            
+            let elapsed = timestamp - animationStartTime;
+            let progress = Math.min(elapsed / animationDuration, 1.0);
+            
+            // 🗺️ イージング（滑らかな加減速運動を適用）
+            let easeProgress = progress < 0.5 ? 2 * progress * progress : 1 - Math.pow(-2 * progress + 2, 2) / 2;
+
+            const size = 600;
             canvas.width = size; canvas.height = size;
             ctx.clearRect(0, 0, size, size);
 
-            // ステージ
+            // 背景ステージ描画
             ctx.fillStyle = '#cbd5e1'; ctx.fillRect(0, 0, size, size * 0.12);
             ctx.fillStyle = '#475569'; ctx.font = 'bold 22px sans-serif'; ctx.textAlign = 'center';
             ctx.fillText('ステージ（前）', size / 2, size * 0.08);
@@ -241,46 +307,105 @@
             ctx.beginPath(); ctx.moveTo(0, size * 0.55); ctx.lineTo(size, size * 0.55); ctx.stroke();
             ctx.setLineDash([]);
 
-            const currentForm = formations[currentFrameIndex];
-            if (!currentForm) return;
+            // 各メンバーの現在の中間座標を計算して描画
+            for (let i = 1; i <= totalCount; i++) {
+                const startP = sourcePositions.find(p => p.memberNumber === i);
+                const endP = targetPositions.find(p => p.memberNumber === i);
+                if (!startP || !endP) continue;
 
-            // 他の人
-            currentForm.positions.forEach(pos => {
-                const isMe = (userRole === 'performer' && pos.memberNumber === myMemberNumber);
-                if (isMe) return;
+                // スーッと移動中の中間地点
+                let currentX = startP.x + (endP.x - startP.x) * easeProgress;
+                let currentY = startP.y + (endP.y - startP.y) * easeProgress;
 
-                const drawX = (pos.x / 1000) * size;
-                const drawY = (pos.y / 1000) * size;
-                const isSelected = (userRole === 'admin' && pos.memberNumber === draggedNumber);
+                const drawX = (currentX / 1000) * size;
+                const drawY = (currentY / 1000) * size;
+                const isMe = (userRole === 'performer' && i === myMemberNumber);
 
-                ctx.beginPath();
-                ctx.arc(drawX, drawY, 11, 0, Math.PI * 2);
-                ctx.fillStyle = isSelected ? '#ef4444' : '#3b82f6';
-                ctx.strokeStyle = '#ffffff';
-                ctx.lineWidth = 1.5;
-                ctx.fill(); ctx.stroke();
+                if (!isMe) {
+                    ctx.beginPath(); ctx.arc(drawX, drawY, 11, 0, Math.PI * 2);
+                    ctx.fillStyle = '#3b82f6'; ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 1.5;
+                    ctx.fill(); ctx.stroke();
+                    ctx.fillStyle = '#ffffff'; ctx.font = '10px sans-serif';
+                    ctx.fillText(i, drawX, drawY + 0.5);
+                }
+            }
 
-                ctx.fillStyle = '#ffffff'; ctx.font = '10px sans-serif';
-                ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-                ctx.fillText(pos.memberNumber, drawX, drawY);
-            });
-
-            // 自分
+            // 自分の丸を一番手前に大きく描画
             if (userRole === 'performer') {
-                const myPos = currentForm.positions.find(p => p.memberNumber === myMemberNumber);
-                if (myPos) {
-                    const drawX = (myPos.x / 1000) * size;
-                    const drawY = (myPos.y / 1000) * size;
+                const startP = sourcePositions.find(p => p.memberNumber === myMemberNumber);
+                const endP = targetPositions.find(p => p.memberNumber === myMemberNumber);
+                if (startP && endP) {
+                    let currentX = startP.x + (endP.x - startP.x) * easeProgress;
+                    let currentY = startP.y + (endP.y - startP.y) * easeProgress;
+                    const drawX = (currentX / 1000) * size;
+                    const drawY = (currentY / 1000) * size;
 
                     ctx.shadowColor = '#ea580c'; ctx.shadowBlur = 15;
                     ctx.beginPath(); ctx.arc(drawX, drawY, 16, 0, Math.PI * 2);
                     ctx.fillStyle = '#ea580c'; ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 3;
                     ctx.fill(); ctx.stroke();
                     ctx.shadowBlur = 0;
-
                     ctx.fillStyle = '#ffffff'; ctx.font = 'bold 13px sans-serif';
-                    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-                    ctx.fillText(myPos.memberNumber, drawX, drawY);
+                    ctx.fillText(myMemberNumber, drawX, drawY + 0.5);
+                }
+            }
+
+            if (progress < 1.0) {
+                requestAnimationFrame(animateLoop);
+            } else {
+                // 移動完了！次のコマにバトンタッチして自動ループ再生
+                currentFrameIndex = nextFrameIndex;
+                updateUI();
+                // 0.5秒の「タメ」を作ってから次の移動へループ
+                setTimeout(() => {
+                    if (isPlaying) startPlay();
+                }, 500);
+            }
+        }
+
+        // --- キャンバス手動ドラッグ（停止中のみ） ---
+        const canvas = document.getElementById('stageCanvas');
+        const ctx = canvas.getContext('2d');
+        let isDragging = false;
+        let draggedNumber = null;
+
+        function draw() {
+            if (isPlaying) return; // 再生中は通常描画を止める
+            const size = 600; canvas.width = size; canvas.height = size;
+            ctx.clearRect(0, 0, size, size);
+
+            ctx.fillStyle = '#cbd5e1'; ctx.fillRect(0, 0, size, size * 0.12);
+            ctx.fillStyle = '#475569'; ctx.font = 'bold 22px sans-serif'; ctx.textAlign = 'center';
+            ctx.fillText('ステージ（前）', size / 2, size * 0.08);
+
+            ctx.strokeStyle = '#94a3b8'; ctx.lineWidth = 1; ctx.setLineDash([5, 5]);
+            ctx.beginPath(); ctx.moveTo(size / 2, 0); ctx.lineTo(size / 2, size); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(0, size * 0.55); ctx.lineTo(size, size * 0.55); ctx.stroke();
+            ctx.setLineDash([]);
+
+            const currentForm = formations[currentFrameIndex];
+            if (!currentForm) return;
+
+            currentForm.positions.forEach(pos => {
+                if (userRole === 'performer' && pos.memberNumber === myMemberNumber) return;
+                const drawX = (pos.x / 1000) * size; const drawY = (pos.y / 1000) * size;
+                const isSelected = (userRole === 'admin' && pos.memberNumber === draggedNumber);
+
+                ctx.beginPath(); ctx.arc(drawX, drawY, 11, 0, Math.PI * 2);
+                ctx.fillStyle = isSelected ? '#ef4444' : '#3b82f6'; ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 1.5;
+                ctx.fill(); ctx.stroke();
+                ctx.fillStyle = '#ffffff'; ctx.font = '10px sans-serif'; ctx.fillText(pos.memberNumber, drawX, drawY + 0.5);
+            });
+
+            if (userRole === 'performer') {
+                const myPos = currentForm.positions.find(p => p.memberNumber === myMemberNumber);
+                if (myPos) {
+                    const drawX = (myPos.x / 1000) * size; const drawY = (myPos.y / 1000) * size;
+                    ctx.shadowColor = '#ea580c'; ctx.shadowBlur = 15;
+                    ctx.beginPath(); ctx.arc(drawX, drawY, 16, 0, Math.PI * 2);
+                    ctx.fillStyle = '#ea580c'; ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 3;
+                    ctx.fill(); ctx.stroke(); ctx.shadowBlur = 0;
+                    ctx.fillStyle = '#ffffff'; ctx.font = 'bold 13px sans-serif'; ctx.fillText(myPos.memberNumber, drawX, drawY + 0.5);
                 }
             }
         }
@@ -289,14 +414,11 @@
             const rect = canvas.getBoundingClientRect();
             const clientX = e.touches ? e.touches[0].clientX : e.clientX;
             const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-            return {
-                x: ((clientX - rect.left) / rect.width) * 1000,
-                y: ((clientY - rect.top) / rect.height) * 1000
-            };
+            return { x: ((clientX - rect.left) / rect.width) * 1000, y: ((clientY - rect.top) / rect.height) * 1000 };
         }
 
         function handleStart(e) {
-            if (userRole !== 'admin') return;
+            if (userRole !== 'admin' || isPlaying) return;
             const pos = getCanvasMousePos(e);
             const currentForm = formations[currentFrameIndex];
             const hit = currentForm.positions.find(p => Math.sqrt(Math.pow(p.x - pos.x, 2) + Math.pow(p.y - pos.y, 2)) < 45);
@@ -304,7 +426,7 @@
         }
 
         function handleMove(e) {
-            if (!isDragging || draggedNumber === null) return;
+            if (!isDragging || draggedNumber === null || isPlaying) return;
             if (e.cancelable) e.preventDefault(); 
             const pos = getCanvasMousePos(e);
             const currentForm = formations[currentFrameIndex];
@@ -326,54 +448,20 @@
 
         // --- 9大テンプレート ---
         window.applyTemplate = function(type) {
-            if(userRole !== 'admin') return;
+            if(userRole !== 'admin' || isPlaying) return;
             const currentForm = formations[currentFrameIndex];
             currentForm.positions = [];
-            
             for (let i = 0; i < totalCount; i++) {
-                const num = i + 1;
-                let x = 500, y = 550;
-                const rate = i / (totalCount - 1 || 1);
-
-                if (type === 'line') {
-                    x = 120 + rate * 760; y = 550;
-                } else if (type === 'vertLine') {
-                    x = 500; y = 180 + rate * 700;
-                } else if (type === 'circle') {
-                    const angle = (i / totalCount) * 2 * Math.PI - Math.PI / 2;
-                    x = 500 + Math.cos(angle) * 300; y = 550 + Math.sin(angle) * 300;
-                } else if (type === 'vShape') {
-                    const isLeft = i < totalCount / 2;
-                    const step = isLeft ? i : (totalCount - 1 - i);
-                    x = isLeft ? 500 - (totalCount/2 - i)*12 : 500 + (i - totalCount/2)*12;
-                    y = 300 + step * (700 / totalCount * 1.5);
-                } else if (type === 'revVShape') {
-                    const isLeft = i < totalCount / 2;
-                    const step = isLeft ? i : (totalCount - 1 - i);
-                    x = isLeft ? 500 - (totalCount/2 - i)*12 : 500 + (i - totalCount/2)*12;
-                    y = 850 - step * (700 / totalCount * 1.5);
-                } else if (type === 'block') {
-                    const half = Math.floor(totalCount / 2);
-                    if (i < half) {
-                        x = 150 + (i / (half - 1 || 1)) * 700; y = 450;
-                    } else {
-                        x = 150 + ((i - half) / (totalCount - half - 1 || 1)) * 700; y = 650;
-                    }
-                } else if (type === 'xShape') {
-                    if (i < totalCount / 2) {
-                        const r = i / (totalCount / 2 - 1 || 1);
-                        x = 200 + r * 600; y = 250 + r * 600;
-                    } else {
-                        const r = (i - totalCount / 2) / (totalCount - totalCount / 2 - 1 || 1);
-                        x = 800 - r * 600; y = 250 + r * 600;
-                    }
-                } else if (type === 'wave') {
-                    x = 120 + rate * 760;
-                    y = 550 + Math.sin(rate * Math.PI * 2) * 200;
-                } else if (type === 'random') {
-                    x = 150 + (Math.sin(i * 9) * 0.5 + 0.5) * 700;
-                    y = 200 + (Math.cos(i * 7) * 0.5 + 0.5) * 650;
-                }
+                const num = i + 1; let x = 500, y = 550; const rate = i / (totalCount - 1 || 1);
+                if (type === 'line') { x = 120 + rate * 760; y = 550; }
+                else if (type === 'vertLine') { x = 500; y = 180 + rate * 700; }
+                else if (type === 'circle') { const angle = (i / totalCount) * 2 * Math.PI - Math.PI / 2; x = 500 + Math.cos(angle) * 300; y = 550 + Math.sin(angle) * 300; }
+                else if (type === 'vShape') { const isLeft = i < totalCount / 2; const step = isLeft ? i : (totalCount - 1 - i); x = isLeft ? 500 - (totalCount/2 - i)*12 : 500 + (i - totalCount/2)*12; y = 300 + step * (700 / totalCount * 1.5); }
+                else if (type === 'revVShape') { const isLeft = i < totalCount / 2; const step = isLeft ? i : (totalCount - 1 - i); x = isLeft ? 500 - (totalCount/2 - i)*12 : 500 + (i - totalCount/2)*12; y = 850 - step * (700 / totalCount * 1.5); }
+                else if (type === 'block') { const half = Math.floor(totalCount / 2); if (i < half) { x = 150 + (i / (half - 1 || 1)) * 700; y = 450; } else { x = 150 + ((i - half) / (totalCount - half - 1 || 1)) * 700; y = 650; } }
+                else if (type === 'xShape') { if (i < totalCount / 2) { const r = i / (totalCount / 2 - 1 || 1); x = 200 + r * 600; y = 250 + r * 600; } else { const r = (i - totalCount / 2) / (totalCount - totalCount / 2 - 1 || 1); x = 800 - r * 600; y = 250 + r * 600; } }
+                else if (type === 'wave') { x = 120 + rate * 760; y = 550 + Math.sin(rate * Math.PI * 2) * 200; }
+                else if (type === 'random') { x = 150 + (Math.sin(i * 9) * 0.5 + 0.5) * 700; y = 200 + (Math.cos(i * 7) * 0.5 + 0.5) * 650; }
                 currentForm.positions.push({ memberNumber: num, x, y });
             }
             draw();
@@ -382,8 +470,7 @@
         // --- UI更新 ---
         function updateUI() {
             const tl = document.getElementById('timeline-list');
-            if(!tl) return;
-            tl.innerHTML = '';
+            if(!tl) return; tl.innerHTML = '';
             
             formations.forEach((form, idx) => {
                 const btn = document.createElement('button');
@@ -394,17 +481,19 @@
                     btn.style.backgroundColor = userRole === 'admin' ? '#2563eb' : '#ea580c';
                     btn.style.color = 'white';
                 } else {
-                    btn.style.backgroundColor = '#f8fafc';
-                    btn.style.color = '#334155';
+                    btn.style.backgroundColor = '#f8fafc'; btn.style.color = '#334155';
                 }
                 
-                btn.onclick = () => { currentFrameIndex = idx; updateUI(); };
+                btn.onclick = () => { if(isPlaying) stopPlay(); currentFrameIndex = idx; updateUI(); };
                 tl.appendChild(btn);
             });
 
             const currentForm = formations[currentFrameIndex];
             if (!currentForm) return;
             
+            // 秒数入力フィールドの同期
+            document.getElementById('frame-duration-input').value = currentForm.duration || 3.0;
+
             // メモ表示
             if(userRole === 'admin') {
                 const nameInput = document.getElementById('frame-name-input');
@@ -416,14 +505,10 @@
                 if (memoText) {
                     if (currentForm.memo && currentForm.memo.trim() !== '') {
                         memoText.innerText = `📝 指示: ${currentForm.memo}`;
-                        memoText.style.backgroundColor = '#fffae6';
-                        memoText.style.color = '#7a5f00';
-                        memoText.style.borderLeft = '4px solid #d97706';
+                        memoText.style.backgroundColor = '#fffae6'; memoText.style.color = '#7a5f00'; memoText.style.borderLeft = '4px solid #d97706';
                     } else {
                         memoText.innerText = '💡 このコマの指示メモはまだありません';
-                        memoText.style.backgroundColor = '#f1f5f9';
-                        memoText.style.color = '#64748b';
-                        memoText.style.borderLeft = '4px solid #cbd5e1';
+                        memoText.style.backgroundColor = '#f1f5f9'; memoText.style.color = '#64748b'; memoText.style.borderLeft = '4px solid #cbd5e1';
                     }
                 }
             }
@@ -434,9 +519,11 @@
         document.getElementById('frame-name-input').oninput = e => {
             if(userRole === 'admin') { formations[currentFrameIndex].name = e.target.value; updateUI(); }
         };
-        
         document.getElementById('frame-memo-input').oninput = e => {
             if(userRole === 'admin') { formations[currentFrameIndex].memo = e.target.value; }
+        };
+        document.getElementById('frame-duration-input').oninput = e => {
+            if(userRole === 'admin') { formations[currentFrameIndex].duration = Math.max(0.5, parseFloat(e.target.value) || 3.0); }
         };
         
         document.getElementById('add-frame-btn').onclick = () => {
@@ -447,6 +534,7 @@
                 id: 'f_' + Date.now(),
                 name: `コマ ${newIndex}`,
                 memo: '',
+                duration: 3.0,
                 positions: currentForm.positions.map(p => ({...p}))
             });
             currentFrameIndex = formations.length - 1;
@@ -456,14 +544,12 @@
         document.getElementById('total-count-input').onchange = e => {
             if(userRole !== 'admin') return;
             totalCount = Math.max(1, Math.min(150, parseInt(e.target.value) || 70));
-            initFirstFrame();
-            buildLoginDropdown();
-            updateUI();
+            initFirstFrame(); buildLoginDropdown(); updateUI();
         };
 
         // 初期実行
-        buildLoginDropdown();
-        initFirstFrame();
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        buildLoginDropdown(); initFirstFrame();
     </script>
 </body>
 </html>
