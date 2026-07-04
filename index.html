@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>ダンスフォーメーションアプリ - 動くアニメーション版</title>
+    <title>ダンスフォーメーションアプリ - 音楽シンクロ版</title>
     <style>
         * { box-sizing: border-box; font-family: sans-serif; margin: 0; padding: 0; }
         body { background-color: #f1f5f9; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
@@ -24,23 +24,25 @@
 
         /* ④ フッター */
         .footer { background-color: #ffffff; border-top: 1px solid #cbd5e1; padding: 10px; box-shadow: 0 -2px 10px rgba(0,0,0,0.05); display: flex; flex-direction: column; gap: 6px; }
+        
+        /* 🎵 音楽プレイヤーエリア */
+        .audio-player-zone { background-color: #f8fafc; border: 1px solid #e2e8f0; padding: 10px; border-radius: 8px; display: flex; flex-direction: column; gap: 6px; }
+        .player-row-1 { display: flex; align-items: center; gap: 10px; }
+        .play-btn { background-color: #2563eb; color: white; border: none; padding: 8px 20px; border-radius: 6px; font-weight: bold; font-size: 14px; cursor: pointer; white-space: nowrap; }
+        .play-btn.playing { background-color: #dc2626; }
+        .time-display { font-family: monospace; font-size: 14px; color: #334155; font-weight: bold; white-space: nowrap; }
+        .seek-bar { flex: 1; height: 8px; cursor: pointer; accent-color: #2563eb; }
+        
         .timeline { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px; -webkit-overflow-scrolling: touch; }
-        .frame-btn { padding: 6px 12px; font-size: 12px; font-weight: bold; border-radius: 6px; border: 1px solid #cbd5e1; cursor: pointer; white-space: nowrap; transition: all 0.2s; }
+        .frame-btn { padding: 6px 12px; font-size: 12px; font-weight: bold; border-radius: 6px; border: 1px solid #cbd5e1; cursor: pointer; white-space: nowrap; transition: all 0.2s; text-align: left; }
+        .frame-time-tag { display: block; font-size: 10px; color: #64748b; font-weight: normal; margin-top: 2px; }
         
         .control-grid { display: flex; flex-direction: column; gap: 6px; width: 100%; }
-        .admin-row-1 { display: flex; align-items: center; justify-content: space-between; gap: 6px; flex-wrap: wrap; }
-        
-        /* 再生バーエリア */
-        .play-row { display: flex; align-items: center; gap: 10px; background-color: #f8fafc; padding: 6px; border-radius: 8px; border: 1px solid #e2e8f0; }
-        .play-btn { background-color: #2563eb; color: white; border: none; padding: 6px 16px; border-radius: 6px; font-weight: bold; font-size: 13px; cursor: pointer; }
-        .play-btn.playing { background-color: #dc2626; }
-        
-        /* テンプレートのスクロールバー */
         .template-scroll { display: flex; gap: 4px; overflow-x: auto; padding: 2px 0; -webkit-overflow-scrolling: touch; width: 100%; }
         .action-btn { padding: 6px 10px; font-size: 11px; font-weight: bold; background-color: #f1f5f9; color: #334155; border: 1px solid #cbd5e1; border-radius: 6px; cursor: pointer; white-space: nowrap; }
         .add-btn { background-color: #10b981; color: white; border: none; padding: 6px 12px; font-size: 12px; }
         
-        /* 🔒 ログイン画面用スタイル */
+        /* 🔒 ログイン画面用 */
         .login-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background-color: #0f172a; display: flex; justify-content: center; align-items: center; z-index: 999; padding: 20px; }
         .login-card { background-color: white; padding: 30px; border-radius: 12px; width: 100%; max-width: 400px; box-shadow: 0 10px 25px rgba(0,0,0,0.3); text-align: center; }
         .login-card h2 { color: #1e293b; margin-bottom: 20px; font-size: 20px; }
@@ -52,6 +54,7 @@
         
         select, input[type="text"], input[type="number"] { padding: 5px; border-radius: 6px; border: 1px solid #cbd5e1; font-size: 12px; }
         textarea { width: 100%; height: 40px; padding: 6px; border-radius: 6px; border: 1px solid #cbd5e1; font-size: 12px; resize: none; color: #334155; background-color: white; }
+        .audio-file-input { font-size: 11px; color: #475569; }
     </style>
 </head>
 <body>
@@ -72,7 +75,7 @@
             
             <div id="form-admin" style="display: none;">
                 <p style="font-size: 13px; color: #64748b; margin-bottom: 15px;">管理用パスワードを入力してください</p>
-                <input type="password" id="admin-password" class="input-field" placeholder="パスワードを入力 (初期: 1234)">
+                <input type="password" id="admin-password" class="input-field" placeholder="パスワードを入力してください">
                 <button class="submit-btn" onclick="loginAsAdmin()">管理者としてログイン</button>
             </div>
         </div>
@@ -101,12 +104,19 @@
     </div>
 
     <div class="footer">
-        <div class="play-row">
-            <button id="play-pause-btn" class="play-btn" onclick="togglePlay()">▶️ 再生</button>
-            <div style="font-size: 12px; color: #475569; display: flex; align-items: center; gap: 4px;">
-                <span>移動秒数:</span>
-                <input type="number" id="frame-duration-input" value="3.0" step="0.5" min="0.5" max="10" style="width: 50px; text-align: center;">秒
-                <span id="admin-duration-notice" style="color: #94a3b8; margin-left: 4px;">(次のコマへの移動時間)</span>
+        
+        <div class="audio-player-zone">
+            <div class="player-row-1">
+                <button id="play-pause-btn" class="play-btn" onclick="togglePlay()">▶️ 再生</button>
+                <span id="time-display" class="time-display">00:00 / 00:00</span>
+                <input type="range" id="seek-bar" class="seek-bar" value="0" min="0" max="100" step="0.1" oninput="handleSeekBar(this.value)">
+            </div>
+            <div id="audio-file-picker-row" style="display: flex; align-items: center; justify-content: space-between; gap: 4px;">
+                <div style="display: flex; align-items: center; gap: 4px;">
+                    <span style="font-size: 11px; font-weight: bold; color: #475569;">🎵 練習曲選択:</span>
+                    <input type="file" id="audio-file-input" class="audio-file-input" accept="audio/*" onchange="loadAudioFile(this)">
+                </div>
+                <button id="audio-mark-btn" class="action-btn" style="background-color: #ea580c; color: white; display: none; font-size: 11px; padding: 4px 8px;" onclick="markCurrentTime()">⏱️ 再生位置をこのコマに設定</button>
             </div>
         </div>
 
@@ -116,11 +126,10 @@
             <div id="admin-controls" style="display: none; flex-direction: column; gap: 6px; width: 100%;">
                 <div class="admin-row-1">
                     <div style="display: flex; align-items: center; gap: 4px; font-size: 11px;">
-                        <span>コマ名:</span>
-                        <input type="text" id="frame-name-input" style="width: 80px;">
+                        <span>コマ名:</span> <input type="text" id="frame-name-input" style="width: 70px;">
+                        <span>開始秒数:</span> <input type="number" id="frame-time-input" value="0.0" step="0.1" min="0" style="width: 55px; text-align: center;">秒
                         <button id="add-frame-btn" class="frame-btn add-btn">➕ コマ追加</button>
-                        <span style="margin-left: 2px;">人数:</span>
-                        <input type="number" id="total-count-input" value="70" style="width: 40px;">人
+                        <span style="margin-left: 2px;">人数:</span> <input type="number" id="total-count-input" value="70" style="width: 35px;">人
                     </div>
                 </div>
                 <div class="template-scroll">
@@ -137,29 +146,34 @@
             </div>
 
             <div id="performer-controls" style="display: none; font-size: 12px; color: #475569; font-weight: bold; text-align: center; padding: 4px;">
-                👆 「▶️ 再生」を押すと、設定された秒数でフォーメーションが自動で動きます！
+                🎧 上の「練習曲選択」から音楽ファイルを読み込むと、曲に合わせて完全シンクロ再生します！
             </div>
         </div>
     </div>
 
+    <audio id="main-audio" style="display: none;"></audio>
+
     <script>
-        // --- 状態管理 ---
+        // ==========================================
+        // 🔒 管理者用パスワード設定
+        // ==========================================
+        const ADMIN_PASSWORD = 'matutaku'; 
+        // ==========================================
+
         let userRole = null; 
         let myMemberNumber = null; 
         let totalCount = 70;
         let currentFrameIndex = 0;
         
-        // アニメーション用変数
-        let isPlaying = false;
-        let animationStartTime = 0;
-        let animationDuration = 3000; // ミリ秒換算
-        let sourcePositions = []; // アニメーション開始時の座標
-        let targetPositions = []; // アニメーション終了時の座標
-        let nextFrameIndex = 0;
+        // 🎵 音声・アニメーション同期エンジン用
+        const audio = document.getElementById('main-audio');
+        let isAudioLoaded = false;
+        let animationFrameId = null;
 
+        // ⏱️ 各コマの「曲の開始秒数(time)」を指定する形式に変更！
         let formations = [
-            { id: 'f1', name: '① 開幕', memo: '最初の立ち位置です！', duration: 3.0, positions: [] },
-            { id: 'f2', name: '② 展開', memo: '3秒かけて次の位置へ大移動！', duration: 3.0, positions: [] }
+            { id: 'f1', name: '① 開幕', memo: '曲の始まりの立ち位置です！', time: 0.0, positions: [] },
+            { id: 'f2', name: '② サビ頭', memo: 'サビ（4秒時点）でサークルに変形！', time: 4.0, positions: [] }
         ];
 
         function buildLoginDropdown() {
@@ -173,29 +187,19 @@
         }
 
         function initFirstFrame() {
-            // コマ1
             formations[0].positions = [];
             const cols = 10;
             for(let i = 0; i < totalCount; i++) {
-                formations[0].positions.push({
-                    memberNumber: i + 1,
-                    x: 180 + (i % cols) * 70,
-                    y: 320 + Math.floor(i / cols) * 70
-                });
+                formations[0].positions.push({ memberNumber: i + 1, x: 180 + (i % cols) * 70, y: 320 + Math.floor(i / cols) * 70 });
             }
-            // コマ2（初期は円形にばらけさせておく）
             formations[1].positions = [];
             for(let i = 0; i < totalCount; i++) {
                 const angle = (i / totalCount) * 2 * Math.PI - Math.PI / 2;
-                formations[1].positions.push({
-                    memberNumber: i + 1,
-                    x: 500 + Math.cos(angle) * 300,
-                    y: 550 + Math.sin(angle) * 300
-                });
+                formations[1].positions.push({ memberNumber: i + 1, x: 500 + Math.cos(angle) * 300, y: 550 + Math.sin(angle) * 300 });
             }
         }
 
-        // --- ログイン処理 ---
+        // --- 🔒 ログイン処理 ---
         function switchLoginTab(type) {
             document.getElementById('tab-perf').className = type === 'perf' ? 'tab-btn active' : 'tab-btn';
             document.getElementById('tab-admin').className = type === 'admin' ? 'tab-btn active' : 'tab-btn';
@@ -204,23 +208,20 @@
         }
 
         function loginAsPerformer() {
-            userRole = 'performer';
-            myMemberNumber = parseInt(document.getElementById('login-number-select').value);
-            document.getElementById('login-screen').style.display = 'none';
-            setupAppMode();
+            userRole = 'performer'; myMemberNumber = parseInt(document.getElementById('login-number-select').value);
+            document.getElementById('login-screen').style.display = 'none'; setupAppMode();
         }
 
         function loginAsAdmin() {
             const pass = document.getElementById('admin-password').value;
-            if(pass === '1234') { 
+            if(pass === ADMIN_PASSWORD) { 
                 userRole = 'admin'; myMemberNumber = null;
-                document.getElementById('login-screen').style.display = 'none';
-                setupAppMode();
-            } else { alert('パスワードが違います！(初期値: 1234)'); }
+                document.getElementById('login-screen').style.display = 'none'; setupAppMode();
+            } else { alert('パスワードが違います！'); }
         }
 
         function logout() {
-            stopPlay(); userRole = null; myMemberNumber = null;
+            audio.pause(); stopSyncLoop(); userRole = null; myMemberNumber = null;
             document.getElementById('admin-password').value = '';
             document.getElementById('login-screen').style.display = 'flex';
         }
@@ -234,8 +235,7 @@
                 document.getElementById('performer-controls').style.display = 'none';
                 document.getElementById('admin-memo-input-wrap').style.display = 'block';
                 document.getElementById('performer-memo-wrap').style.display = 'none';
-                document.getElementById('frame-duration-input').disabled = false;
-                document.getElementById('admin-duration-notice').style.display = 'inline';
+                document.getElementById('audio-mark-btn').style.display = 'block';
             } else {
                 document.getElementById('display-mode-title').innerText = '📱 出演者専用マイ画面';
                 document.getElementById('status-badge').innerText = `${myMemberNumber}番 の位置`;
@@ -244,213 +244,211 @@
                 document.getElementById('performer-controls').style.display = 'block';
                 document.getElementById('admin-memo-input-wrap').style.display = 'none';
                 document.getElementById('performer-memo-wrap').style.display = 'block';
-                document.getElementById('frame-duration-input').disabled = true; // 出演者は秒数変更不可
-                document.getElementById('admin-duration-notice').style.display = 'none';
+                document.getElementById('audio-mark-btn').style.display = 'none';
             }
             updateUI();
         }
 
-        // --- 自動再生（アニメーション）エンジン ---
+        // --- 🎵 音楽ファイル読み込み＆プレイヤー制御 ---
+        function loadAudioFile(input) {
+            const file = input.files[0];
+            if (!file) return;
+            const url = URL.createObjectURL(file);
+            audio.src = url; audio.load();
+            isAudioLoaded = true;
+        }
+
+        audio.addEventListener('loadedmetadata', () => { updatePlayerTimeDisplay(); });
+        audio.addEventListener('timeupdate', () => { updatePlayerTimeDisplay(); if(!audio.paused) { syncAnimationToAudio(); } });
+        audio.addEventListener('ended', () => { document.getElementById('play-pause-btn').innerText = '▶️ 再生'; stopSyncLoop(); });
+
         function togglePlay() {
-            if (isPlaying) { stopPlay(); } else { startPlay(); }
+            if (!isAudioLoaded) { alert('先に「練習曲選択」ボタンから、端末内の音楽ファイル(MP3など)を読み込ませてください！'); return; }
+            if (audio.paused) {
+                audio.play(); document.getElementById('play-pause-btn').innerText = '⏸️ 停止'; startSyncLoop();
+            } else {
+                audio.pause(); document.getElementById('play-pause-btn').innerText = '▶️ 再生'; stopSyncLoop();
+            }
         }
 
-        function startPlay() {
-            if (formations.length <= 1) { alert('アニメーション再生には、コマが2つ以上必要です！'); return; }
-            isPlaying = true;
-            document.getElementById('play-pause-btn').innerText = '⏸️ 停止';
-            document.getElementById('play-pause-btn').classList.add('playing');
-            
-            // 現在のコマから、次のコマへの移動を設定
-            nextFrameIndex = (currentFrameIndex + 1) % formations.length;
-            const currentForm = formations[currentFrameIndex];
-            
-            // 秒数を読み込んでアニメーション時間を設定
-            const secs = parseFloat(currentForm.duration) || 3.0;
-            animationDuration = secs * 1000;
-            
-            sourcePositions = JSON.parse(JSON.stringify(currentForm.positions));
-            targetPositions = JSON.parse(JSON.stringify(formations[nextFrameIndex].positions));
-            
-            animationStartTime = performance.now();
-            requestAnimationFrame(animateLoop);
+        function handleSeekBar(val) {
+            if (!isAudioLoaded) return;
+            const targetTime = (val / 100) * audio.duration;
+            audio.currentTime = targetTime;
+            syncAnimationToAudio();
         }
 
-        function stopPlay() {
-            isPlaying = false;
-            document.getElementById('play-pause-btn').innerText = '▶️ 再生';
-            document.getElementById('play-pause-btn').classList.remove('playing');
+        function updatePlayerTimeDisplay() {
+            const current = formatTime(audio.currentTime);
+            const total = isAudioLoaded ? formatTime(audio.duration) : "00:00";
+            document.getElementById('time-display').innerText = `${current} / ${total}`;
+            if (isAudioLoaded && !audio.paused) {
+                document.getElementById('seek-bar').value = (audio.currentTime / audio.duration) * 100;
+            }
+        }
+
+        function formatTime(secs) {
+            const m = Math.floor(secs / 60).toString().padStart(2, '0');
+            const s = Math.floor(secs % 60).toString().padStart(2, '0');
+            return `${m}:${s}`;
+        }
+
+        function markCurrentTime() {
+            if(!isAudioLoaded) { alert('音楽を再生中に押すと、その瞬間の秒数をこのコマの開始位置に指定できます！'); return; }
+            const roundedTime = Math.round(audio.currentTime * 10) / 10;
+            formations[currentFrameIndex].time = roundedTime;
+            formations.sort((a, b) => a.time - b.time); // 秒数順に自動並び替え
             updateUI();
         }
 
-        function animateLoop(timestamp) {
-            if (!isPlaying) return;
+        // --- 🕒 音楽とアニメーションの完全同期エンジン ---
+        function startSyncLoop() { if(!animationFrameId) { animationFrameId = requestAnimationFrame(syncLoopRender); } }
+        function stopSyncLoop() { if(animationFrameId) { cancelAnimationFrame(animationFrameId); animationFrameId = null; } }
+
+        function syncLoopRender() {
+            syncAnimationToAudio();
+            if(!audio.paused) { animationFrameId = requestAnimationFrame(syncLoopRender); }
+        }
+
+        function syncAnimationToAudio() {
+            const currentTime = audio.currentTime;
             
-            let elapsed = timestamp - animationStartTime;
-            let progress = Math.min(elapsed / animationDuration, 1.0);
+            // どのコマとどのコマの間にいるかを検索
+            let activeIdx = 0;
+            for (let i = 0; i < formations.length; i++) {
+                if (formations[i].time <= currentTime) { activeIdx = i; }
+            }
             
-            // 🗺️ イージング（滑らかな加減速運動を適用）
+            currentFrameIndex = activeIdx;
+            let nextIdx = activeIdx + 1;
+
+            const currentForm = formations[activeIdx];
+            
+            // もし次のコマがなければ、最後のコマの位置で固定描画
+            if (nextIdx >= formations.length) {
+                renderPositionsDirect(currentForm.positions);
+                updateUIWithoutRedraw();
+                return;
+            }
+
+            const nextForm = formations[nextIdx];
+            
+            // 2つのコマの間で、今何％の位置にいるか（進捗率）を計算
+            const totalGap = nextForm.time - currentForm.time;
+            let progress = totalGap > 0 ? (currentTime - currentForm.time) / totalGap : 1.0;
+            progress = Math.max(0, Math.min(1, progress)); // 0〜1の間に収める
+
+            // 滑らかに動かす（イージング）
             let easeProgress = progress < 0.5 ? 2 * progress * progress : 1 - Math.pow(-2 * progress + 2, 2) / 2;
 
-            const size = 600;
-            canvas.width = size; canvas.height = size;
-            ctx.clearRect(0, 0, size, size);
-
-            // 背景ステージ描画
-            ctx.fillStyle = '#cbd5e1'; ctx.fillRect(0, 0, size, size * 0.12);
-            ctx.fillStyle = '#475569'; ctx.font = 'bold 22px sans-serif'; ctx.textAlign = 'center';
-            ctx.fillText('ステージ（前）', size / 2, size * 0.08);
-
-            // センターライン
-            ctx.strokeStyle = '#94a3b8'; ctx.lineWidth = 1; ctx.setLineDash([5, 5]);
-            ctx.beginPath(); ctx.moveTo(size / 2, 0); ctx.lineTo(size / 2, size); ctx.stroke();
-            ctx.beginPath(); ctx.moveTo(0, size * 0.55); ctx.lineTo(size, size * 0.55); ctx.stroke();
-            ctx.setLineDash([]);
-
-            // 各メンバーの現在の中間座標を計算して描画
-            for (let i = 1; i <= totalCount; i++) {
-                const startP = sourcePositions.find(p => p.memberNumber === i);
-                const endP = targetPositions.find(p => p.memberNumber === i);
-                if (!startP || !endP) continue;
-
-                // スーッと移動中の中間地点
-                let currentX = startP.x + (endP.x - startP.x) * easeProgress;
-                let currentY = startP.y + (endP.y - startP.y) * easeProgress;
-
-                const drawX = (currentX / 1000) * size;
-                const drawY = (currentY / 1000) * size;
-                const isMe = (userRole === 'performer' && i === myMemberNumber);
-
-                if (!isMe) {
-                    ctx.beginPath(); ctx.arc(drawX, drawY, 11, 0, Math.PI * 2);
-                    ctx.fillStyle = '#3b82f6'; ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 1.5;
-                    ctx.fill(); ctx.stroke();
-                    ctx.fillStyle = '#ffffff'; ctx.font = '10px sans-serif';
-                    ctx.fillText(i, drawX, drawY + 0.5);
-                }
-            }
-
-            // 自分の丸を一番手前に大きく描画
-            if (userRole === 'performer') {
-                const startP = sourcePositions.find(p => p.memberNumber === myMemberNumber);
-                const endP = targetPositions.find(p => p.memberNumber === myMemberNumber);
-                if (startP && endP) {
-                    let currentX = startP.x + (endP.x - startP.x) * easeProgress;
-                    let currentY = startP.y + (endP.y - startP.y) * easeProgress;
-                    const drawX = (currentX / 1000) * size;
-                    const drawY = (currentY / 1000) * size;
-
-                    ctx.shadowColor = '#ea580c'; ctx.shadowBlur = 15;
-                    ctx.beginPath(); ctx.arc(drawX, drawY, 16, 0, Math.PI * 2);
-                    ctx.fillStyle = '#ea580c'; ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 3;
-                    ctx.fill(); ctx.stroke();
-                    ctx.shadowBlur = 0;
-                    ctx.fillStyle = '#ffffff'; ctx.font = 'bold 13px sans-serif';
-                    ctx.fillText(myMemberNumber, drawX, drawY + 0.5);
-                }
-            }
-
-            if (progress < 1.0) {
-                requestAnimationFrame(animateLoop);
-            } else {
-                // 移動完了！次のコマにバトンタッチして自動ループ再生
-                currentFrameIndex = nextFrameIndex;
-                updateUI();
-                // 0.5秒の「タメ」を作ってから次の移動へループ
-                setTimeout(() => {
-                    if (isPlaying) startPlay();
-                }, 500);
-            }
+            renderInterpolated(currentForm.positions, nextForm.positions, easeProgress);
+            updateUIWithoutRedraw();
         }
 
-        // --- キャンバス手動ドラッグ（停止中のみ） ---
-        const canvas = document.getElementById('stageCanvas');
-        const ctx = canvas.getContext('2d');
-        let isDragging = false;
-        let draggedNumber = null;
+        // --- 🗺️ 描画エンジン ---
+        const canvas = document.getElementById('stageCanvas'); const ctx = canvas.getContext('2d');
+        let isDragging = false; let draggedNumber = null;
 
         function draw() {
-            if (isPlaying) return; // 再生中は通常描画を止める
-            const size = 600; canvas.width = size; canvas.height = size;
-            ctx.clearRect(0, 0, size, size);
-
-            ctx.fillStyle = '#cbd5e1'; ctx.fillRect(0, 0, size, size * 0.12);
-            ctx.fillStyle = '#475569'; ctx.font = 'bold 22px sans-serif'; ctx.textAlign = 'center';
-            ctx.fillText('ステージ（前）', size / 2, size * 0.08);
-
-            ctx.strokeStyle = '#94a3b8'; ctx.lineWidth = 1; ctx.setLineDash([5, 5]);
-            ctx.beginPath(); ctx.moveTo(size / 2, 0); ctx.lineTo(size / 2, size); ctx.stroke();
-            ctx.beginPath(); ctx.moveTo(0, size * 0.55); ctx.lineTo(size, size * 0.55); ctx.stroke();
-            ctx.setLineDash([]);
-
+            if (isAudioLoaded && !audio.paused) return; // 再生中は同期ループ側に任せる
             const currentForm = formations[currentFrameIndex];
-            if (!currentForm) return;
+            if (currentForm) { renderPositionsDirect(currentForm.positions); }
+        }
 
-            currentForm.positions.forEach(pos => {
+        function renderPositionsDirect(positions) {
+            const size = 600; canvas.width = size; canvas.height = size; ctx.clearRect(0, 0, size, size);
+            drawStageBase(size);
+
+            positions.forEach(pos => {
                 if (userRole === 'performer' && pos.memberNumber === myMemberNumber) return;
                 const drawX = (pos.x / 1000) * size; const drawY = (pos.y / 1000) * size;
                 const isSelected = (userRole === 'admin' && pos.memberNumber === draggedNumber);
-
                 ctx.beginPath(); ctx.arc(drawX, drawY, 11, 0, Math.PI * 2);
-                ctx.fillStyle = isSelected ? '#ef4444' : '#3b82f6'; ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 1.5;
-                ctx.fill(); ctx.stroke();
+                ctx.fillStyle = isSelected ? '#ef4444' : '#3b82f6'; ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 1.5; ctx.fill(); ctx.stroke();
                 ctx.fillStyle = '#ffffff'; ctx.font = '10px sans-serif'; ctx.fillText(pos.memberNumber, drawX, drawY + 0.5);
             });
 
             if (userRole === 'performer') {
-                const myPos = currentForm.positions.find(p => p.memberNumber === myMemberNumber);
-                if (myPos) {
-                    const drawX = (myPos.x / 1000) * size; const drawY = (myPos.y / 1000) * size;
-                    ctx.shadowColor = '#ea580c'; ctx.shadowBlur = 15;
-                    ctx.beginPath(); ctx.arc(drawX, drawY, 16, 0, Math.PI * 2);
-                    ctx.fillStyle = '#ea580c'; ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 3;
-                    ctx.fill(); ctx.stroke(); ctx.shadowBlur = 0;
-                    ctx.fillStyle = '#ffffff'; ctx.font = 'bold 13px sans-serif'; ctx.fillText(myPos.memberNumber, drawX, drawY + 0.5);
+                const myPos = positions.find(p => p.memberNumber === myMemberNumber);
+                if (myPos) drawMyCircle((myPos.x / 1000) * size, (myPos.y / 1000) * size);
+            }
+        }
+
+        function renderInterpolated(startPositions, endPositions, ease) {
+            const size = 600; canvas.width = size; canvas.height = size; ctx.clearRect(0, 0, size, size);
+            drawStageBase(size);
+
+            for (let i = 1; i <= totalCount; i++) {
+                const startP = startPositions.find(p => p.memberNumber === i);
+                const endP = endPositions.find(p => p.memberNumber === i);
+                if (!startP || !endP) continue;
+
+                let currentX = startP.x + (endP.x - startP.x) * ease;
+                let currentY = startP.y + (endP.y - startP.y) * ease;
+                const drawX = (currentX / 1000) * size; const drawY = (currentY / 1000) * size;
+
+                if (userRole === 'performer' && i === myMemberNumber) continue;
+
+                ctx.beginPath(); ctx.arc(drawX, drawY, 11, 0, Math.PI * 2);
+                ctx.fillStyle = '#3b82f6'; ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 1.5; ctx.fill(); ctx.stroke();
+                ctx.fillStyle = '#ffffff'; ctx.font = '10px sans-serif'; ctx.fillText(i, drawX, drawY + 0.5);
+            }
+
+            if (userRole === 'performer') {
+                const startP = startPositions.find(p => p.memberNumber === myMemberNumber);
+                const endP = endPositions.find(p => p.memberNumber === myMemberNumber);
+                if (startP && endP) {
+                    let currentX = startP.x + (endP.x - startP.x) * ease;
+                    let currentY = startP.y + (endP.y - startP.y) * ease;
+                    drawMyCircle((currentX / 1000) * size, (currentY / 1000) * size);
                 }
             }
         }
 
+        function drawStageBase(size) {
+            ctx.fillStyle = '#cbd5e1'; ctx.fillRect(0, 0, size, size * 0.12);
+            ctx.fillStyle = '#475569'; ctx.font = 'bold 22px sans-serif'; ctx.textAlign = 'center'; ctx.fillText('ステージ（前）', size / 2, size * 0.08);
+            ctx.strokeStyle = '#94a3b8'; ctx.lineWidth = 1; ctx.setLineDash([5, 5]);
+            ctx.beginPath(); ctx.moveTo(size / 2, 0); ctx.lineTo(size / 2, size); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(0, size * 0.55); ctx.lineTo(size, size * 0.55); ctx.stroke(); ctx.setLineDash([]);
+        }
+
+        function drawMyCircle(x, y) {
+            ctx.shadowColor = '#ea580c'; ctx.shadowBlur = 15;
+            ctx.beginPath(); ctx.arc(x, y, 16, 0, Math.PI * 2);
+            ctx.fillStyle = '#ea580c'; ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 3; ctx.fill(); ctx.stroke(); ctx.shadowBlur = 0;
+            ctx.fillStyle = '#ffffff'; ctx.font = 'bold 13px sans-serif'; ctx.fillText(myMemberNumber, x, y + 0.5);
+        }
+
+        // --- 🖱️ 手動ドラッグ設定 ---
         function getCanvasMousePos(e) {
             const rect = canvas.getBoundingClientRect();
-            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX; const clientY = e.touches ? e.touches[0].clientY : e.clientY;
             return { x: ((clientX - rect.left) / rect.width) * 1000, y: ((clientY - rect.top) / rect.height) * 1000 };
         }
 
         function handleStart(e) {
-            if (userRole !== 'admin' || isPlaying) return;
-            const pos = getCanvasMousePos(e);
-            const currentForm = formations[currentFrameIndex];
+            if (userRole !== 'admin' || (!audio.paused)) return;
+            const pos = getCanvasMousePos(e); const currentForm = formations[currentFrameIndex];
             const hit = currentForm.positions.find(p => Math.sqrt(Math.pow(p.x - pos.x, 2) + Math.pow(p.y - pos.y, 2)) < 45);
             if (hit) { isDragging = true; draggedNumber = hit.memberNumber; draw(); }
         }
 
         function handleMove(e) {
-            if (!isDragging || draggedNumber === null || isPlaying) return;
-            if (e.cancelable) e.preventDefault(); 
-            const pos = getCanvasMousePos(e);
-            const currentForm = formations[currentFrameIndex];
+            if (!isDragging || draggedNumber === null || (!audio.paused)) return; if (e.cancelable) e.preventDefault(); 
+            const pos = getCanvasMousePos(e); const currentForm = formations[currentFrameIndex];
             const target = currentForm.positions.find(p => p.memberNumber === draggedNumber);
-            if (target) {
-                target.x = Math.max(20, Math.min(980, pos.x));
-                target.y = Math.max(20, Math.min(980, pos.y));
-                draw();
-            }
+            if (target) { target.x = Math.max(20, Math.min(980, pos.x)); target.y = Math.max(20, Math.min(980, pos.y)); draw(); }
         }
 
         function handleEnd() { isDragging = false; draggedNumber = null; draw(); }
 
-        canvas.addEventListener('mousedown', handleStart); canvas.addEventListener('mousemove', handleMove);
-        canvas.addEventListener('mouseup', handleEnd); canvas.addEventListener('mouseleave', handleEnd);
-        canvas.addEventListener('touchstart', handleStart, { passive: false });
-        canvas.addEventListener('touchmove', handleMove, { passive: false });
-        canvas.addEventListener('touchend', handleEnd);
+        canvas.addEventListener('mousedown', handleStart); canvas.addEventListener('mousemove', handleMove); canvas.addEventListener('mouseup', handleEnd); canvas.addEventListener('mouseleave', handleEnd);
+        canvas.addEventListener('touchstart', handleStart, { passive: false }); canvas.addEventListener('touchmove', handleMove, { passive: false }); canvas.addEventListener('touchend', handleEnd);
 
         // --- 9大テンプレート ---
         window.applyTemplate = function(type) {
-            if(userRole !== 'admin' || isPlaying) return;
-            const currentForm = formations[currentFrameIndex];
-            currentForm.positions = [];
+            if(userRole !== 'admin' || (!audio.paused)) return; const currentForm = formations[currentFrameIndex]; currentForm.positions = [];
             for (let i = 0; i < totalCount; i++) {
                 const num = i + 1; let x = 500, y = 550; const rate = i / (totalCount - 1 || 1);
                 if (type === 'line') { x = 120 + rate * 760; y = 550; }
@@ -467,39 +465,25 @@
             draw();
         };
 
-        // --- UI更新 ---
-        function updateUI() {
-            const tl = document.getElementById('timeline-list');
-            if(!tl) return; tl.innerHTML = '';
-            
+        // --- UIコントロール更新 ---
+        function updateUI() { updateUIWithoutRedraw(); draw(); }
+
+        function updateUIWithoutRedraw() {
+            const tl = document.getElementById('timeline-list'); if(!tl) return; tl.innerHTML = '';
             formations.forEach((form, idx) => {
-                const btn = document.createElement('button');
-                btn.className = 'frame-btn';
-                btn.innerText = form.name;
-                
-                if (currentFrameIndex === idx) {
-                    btn.style.backgroundColor = userRole === 'admin' ? '#2563eb' : '#ea580c';
-                    btn.style.color = 'white';
-                } else {
-                    btn.style.backgroundColor = '#f8fafc'; btn.style.color = '#334155';
-                }
-                
-                btn.onclick = () => { if(isPlaying) stopPlay(); currentFrameIndex = idx; updateUI(); };
-                tl.appendChild(btn);
+                const btn = document.createElement('button'); btn.className = 'frame-btn';
+                btn.innerHTML = `${form.name}<span class="frame-time-tag">⏱️ ${form.time.toFixed(1)}秒</span>`;
+                if (currentFrameIndex === idx) { btn.style.backgroundColor = userRole === 'admin' ? '#2563eb' : '#ea580c'; btn.style.color = 'white'; } 
+                else { btn.style.backgroundColor = '#f8fafc'; btn.style.color = '#334155'; }
+                btn.onclick = () => { if(!audio.paused) togglePlay(); currentFrameIndex = idx; if(isAudioLoaded) audio.currentTime = form.time; updateUI(); }; tl.appendChild(btn);
             });
 
-            const currentForm = formations[currentFrameIndex];
-            if (!currentForm) return;
-            
-            // 秒数入力フィールドの同期
-            document.getElementById('frame-duration-input').value = currentForm.duration || 3.0;
+            const currentForm = formations[currentFrameIndex]; if (!currentForm) return;
+            document.getElementById('frame-time-input').value = currentForm.time;
 
-            // メモ表示
             if(userRole === 'admin') {
-                const nameInput = document.getElementById('frame-name-input');
-                const memoInput = document.getElementById('frame-memo-input');
-                if(nameInput) nameInput.value = currentForm.name;
-                if(memoInput) memoInput.value = currentForm.memo || '';
+                const nameInput = document.getElementById('frame-name-input'); const memoInput = document.getElementById('frame-memo-input');
+                if(nameInput) nameInput.value = currentForm.name; if(memoInput) memoInput.value = currentForm.memo || '';
             } else {
                 const memoText = document.getElementById('performer-memo-text');
                 if (memoText) {
@@ -512,40 +496,25 @@
                     }
                 }
             }
-            draw();
         }
 
         // イベント設定
-        document.getElementById('frame-name-input').oninput = e => {
-            if(userRole === 'admin') { formations[currentFrameIndex].name = e.target.value; updateUI(); }
+        document.getElementById('frame-name-input').oninput = e => { if(userRole === 'admin') { formations[currentFrameIndex].name = e.target.value; updateUIWithoutRedraw(); } };
+        document.getElementById('frame-time-input').onchange = e => {
+            if(userRole !== 'admin') return;
+            formations[currentFrameIndex].time = Math.max(0, parseFloat(e.target.value) || 0);
+            formations.sort((a, b) => a.time - b.time); updateUI();
         };
-        document.getElementById('frame-memo-input').oninput = e => {
-            if(userRole === 'admin') { formations[currentFrameIndex].memo = e.target.value; }
-        };
-        document.getElementById('frame-duration-input').oninput = e => {
-            if(userRole === 'admin') { formations[currentFrameIndex].duration = Math.max(0.5, parseFloat(e.target.value) || 3.0); }
-        };
+        document.getElementById('frame-memo-input').oninput = e => { if(userRole === 'admin') { formations[currentFrameIndex].memo = e.target.value; } };
         
         document.getElementById('add-frame-btn').onclick = () => {
-            if(userRole !== 'admin') return;
-            const currentForm = formations[currentFrameIndex];
-            const newIndex = formations.length + 1;
-            formations.push({
-                id: 'f_' + Date.now(),
-                name: `コマ ${newIndex}`,
-                memo: '',
-                duration: 3.0,
-                positions: currentForm.positions.map(p => ({...p}))
-            });
-            currentFrameIndex = formations.length - 1;
-            updateUI();
+            if(userRole !== 'admin') return; const currentForm = formations[currentFrameIndex];
+            const nextTime = currentForm.time + 3.0; // とりあえず3秒後に設定
+            formations.push({ id: 'f_' + Date.now(), name: `コマ ${formations.length + 1}`, memo: '', time: nextTime, positions: currentForm.positions.map(p => ({...p})) });
+            formations.sort((a, b) => a.time - b.time); currentFrameIndex = formations.findIndex(f => f.time === nextTime); updateUI();
         };
 
-        document.getElementById('total-count-input').onchange = e => {
-            if(userRole !== 'admin') return;
-            totalCount = Math.max(1, Math.min(150, parseInt(e.target.value) || 70));
-            initFirstFrame(); buildLoginDropdown(); updateUI();
-        };
+        document.getElementById('total-count-input').onchange = e => { if(userRole !== 'admin') return; totalCount = Math.max(1, Math.min(150, parseInt(e.target.value) || 70)); initFirstFrame(); buildLoginDropdown(); updateUI(); };
 
         // 初期実行
         ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
