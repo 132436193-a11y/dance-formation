@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ダンスフォーメーションアプリ</title>
+    <style>
+        * { box-sizing: border-box; font-family: sans-serif; margin: 0; padding: 0; }
+        body { background-color: #f1f5f9; min-height: 100vh; padding: 10px; display: flex; flexDirection: column; }
+        .bar { background-color: #1e293b; color: white; padding: 10px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+        .mode-btn { padding: 6px 12px; font-size: 12px; cursor: pointer; border: none; border-radius: 4px; color: white; font-weight: bold; }
+        .panel { background-color: white; padding: 10px; border-radius: 8px; margin-bottom: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        .timeline { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 6px; margin-bottom: 8px; }
+        .frame-btn { padding: 6px 12px; font-size: 12px; font-weight: bold; border-radius: 4px; border: 1px solid #cbd5e1; cursor: pointer; white-space: nowrap; }
+        .add-btn { background-color: #10b981; color: white; border: none; }
+        .editor-btn { padding: 8px 12px; font-size: 12px; font-weight: bold; background-color: #f1f5f9; color: #334155; border: 1px solid #cbd5e1; border-radius: 4px; cursor: pointer; }
+        .canvas-container { background-color: #0f172a; display: flex; justify-content: center; align-items: center; padding: 10px; border-radius: 8px; }
+        canvas { background-color: white; border-radius: 4px; width: 100%; max-width: 450px; aspect-ratio: 1/1; height: auto; }
+        select, input { padding: 4px; border-radius: 4px; border: 1px solid #cbd5e1; font-size: 12px; }
+    </style>
+</head>
+<body>
+
+    <div class="bar">
+        <b style="font-size: 14px;">🕺 フォーメーション作成（1枚完結版）</b>
+        <div>
+            <button id="toggle-admin" class="mode-btn" style="background-color: #2563eb;">🛠️ 管理者</button>
+            <button id="toggle-performer" class="mode-btn" style="background-color: #475569;">📱 出演者</button>
+        </div>
+    </div>
+
+    <div id="admin-panel" class="panel">
+        <div id="timeline-list" class="timeline"></div>
+        <div style="display: flex; align-items: center; gap: 8px; font-size: 12px; flex-wrap: wrap;">
+            <span>コマ名:</span>
+            <input type="text" id="frame-name-input" style="width: 110px;">
+            <button id="add-frame-btn" class="frame-btn add-btn">➕ コマ追加</button>
+            <span style="margin-left: 10px;">人数:</span>
+            <input type="number" id="total-count-input" value="70" style="width: 50px;">人
+            <div style="display: flex; gap: 4px; margin-left: auto;">
+                <button onclick="applyTemplate('line')" class="editor-btn">↔️ 一列</button>
+                <button onclick="applyTemplate('circle')" class="editor-btn">⭕ 円形</button>
+                <button onclick="applyTemplate('vShape')" class="editor-btn">🔼 V字</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="performer-panel" class="panel" style="display: none;">
+        <div style="display: flex; justify-content: space-between; align-items: center; font-size: 13px;">
+            <div><b id="performer-current-name">コマ：① オープニング</b></div>
+            <div>
+                <label style="font-weight: bold;">自分の番号:</label>
+                <select id="my-number-select">
+                    <option value="">全体を表示</option>
+                </select>
+            </div>
+        </div>
+        <div id="performer-timeline" class="timeline" style="margin-top: 10px;"></div>
+    </div>
+
+    <div class="canvas-container">
+        <canvas id="stageCanvas"></canvas>
+    </div>
+
+    <script>
+        // --- データ管理 ---
+        let isAdminMode = true;
+        let totalCount = 70;
+        let currentFrameIndex = 0;
+        let formations = [
+            { id: 'f1', name: '① オープニング', positions: [] }
+        ];
+
+        // 初期位置を横一列にする
+        function initFirstFrame() {
+            formations[0].positions = [];
+            for(let i=0; i<totalCount; i++) {
+                formations[0].positions.push({
+                    memberNumber: i + 1,
+                    x: 150 + (i / (totalCount - 1 || 1)) * 700,
+                    y: 550
+                });
+            }
+        }
+        initFirstFrame();
+
+        // --- キャンバス描画 ---
+        const canvas = document.getElementById('stageCanvas');
+        const ctx = canvas.getContext('2d');
+        let isDragging = false;
+        let draggedNumber = null;
+
+        function draw() {
+            const size = 500;
+            canvas.width = size; canvas.height = size;
+            ctx.clearRect(0, 0, size, size);
+
+            // ステージ（グレー）
+            ctx.fillStyle = '#cbd5e1'; ctx.fillRect(0, 0, size, size * 0.12);
+            ctx.fillStyle = '#475569'; ctx.font = 'bold 20px sans-serif'; ctx.textAlign = 'center';
+            ctx.fillText('ステージ（前）', size / 2, size * 0.08);
+
+            // センターライン（点線）
+            ctx.strokeStyle = '#94a3b8'; ctx.lineWidth = 1; ctx.setLineDash([5, 5]);
+            ctx.beginPath(); ctx.moveTo(size / 2, 0); ctx.lineTo(size / 2, size); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(0, size * 0.55); ctx.lineTo(size, size * 0.55); ctx.stroke();
+            ctx.setLineDash([]);
+
+            // メンバーの描画
+            const currentForm = formations[currentFrameIndex];
+            if (!currentForm) return;
+
+            const myNumber = parseInt(document.getElementById('my-number-select').value) || null;
+
+            currentForm.positions.forEach(pos => {
+                const drawX = (pos.x / 1000) * size;
+                const drawY = (pos.y / 1000) * size;
+                const isMe = !isAdminMode && pos.memberNumber === myNumber;
+                const isSelected = isAdminMode && pos.memberNumber === draggedNumber;
+
+                ctx.beginPath();
+                ctx.arc(drawX, drawY, isMe ? 12 : 8, 0, Math.PI * 2);
+
+                if (isAdminMode) {
+                    ctx.fillStyle = isSelected ? '#ef4444' : '#3b82f6';
+                } else {
+                    ctx.fillStyle = isMe ? '#ea580c' : '#3b82f6';
+                    if (isMe) { ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 2; }
+                }
+                ctx.fill();
+                if (isMe) ctx.stroke();
+
+                // 番号テキスト
+                ctx.fillStyle = '#ffffff';
+                ctx.font = isMe ? 'bold 11px sans-serif' : '9px sans-serif';
+                ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+                ctx.fillText(pos.memberNumber, drawX, drawY);
+            });
+        }
+
+        // --- テンプレート自動配置 ---
+        window.applyTemplate = function(type) {
+            const currentForm = formations[currentFrameIndex];
+            currentForm.positions = [];
+            for (let i = 0; i < totalCount; i++) {
+                const num = i + 1;
+                let x = 500, y = 500;
+                if (type === 'line') { x = 150 + (i / (totalCount - 1 || 1)) * 700; y = 550; }
+                else if (type === 'circle') { const angle = (i / totalCount) * 2 * Math.PI; x = 500 + Math.cos(angle) * 300; y = 550 + Math.sin(angle) * 300; }
+                else if (type === 'vShape') { const isLeft = i < totalCount / 2; const step = isLeft ? i : i - Math.floor(totalCount / 2); x = isLeft ? 500 - step * 13 : 500 + step * 13; y = 300 + step * 16; }
+                currentForm.positions.push({ memberNumber: num, x, y });
+            }
+            draw();
+        };
+
+        // --- ドラッグ＆ドロップ（管理者専用） ---
+        canvas.addEventListener('mousedown', e => {
+            if (!isAdminMode) return;
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = ((e.clientX - rect.left) / canvas.width) * 1000;
+            const mouseY = ((e.clientY - rect.top) / canvas.height) * 1000;
+            const currentForm = formations[currentFrameIndex];
+            const hit = currentForm.positions.find(pos => Math.sqrt(Math.pow(pos.x - mouseX, 2) + Math.pow(pos.y - mouseY, 2)) < 25);
+            if (hit) { isDragging = true; draggedNumber = hit.memberNumber; }
+        });
+
+        canvas.addEventListener('mousemove', e => {
+            if (!isDragging || draggedNumber === null) return;
+            const rect = canvas.getBoundingClientRect();
+            let newX = ((e.clientX - rect.left) / canvas.width) * 1000;
+            let newY = ((e.clientY - rect.top) / canvas.height) * 1000;
+            const currentForm = formations[currentFrameIndex];
+            const target = currentForm.positions.find(pos => pos.memberNumber === draggedNumber);
+            if (target) {
+                target.x = Math.max(20, Math.min(980, newX));
+                target.y = Math.max(20, Math.min(980, newY));
+                draw();
+            }
+        });
+
+        const endDrag = () => { isDragging = false; draggedNumber = null; draw(); };
+        canvas.addEventListener('mouseup', endDrag); canvas.addEventListener('mouseleave', endDrag);
+
+        // --- UI更新・連携 ---
+        function updateUI() {
+            // モード切替の見た目
+            document.getElementById('toggle-admin').style.backgroundColor = isAdminMode ? '#2563eb' : '#475569';
+            document.getElementById('toggle-performer').style.backgroundColor = !isAdminMode ? '#ea580c' : '#475569';
+            document.getElementById('admin-panel').style.display = isAdminMode ? 'block' : 'none';
+            document.getElementById('performer-panel').style.display = !isAdminMode ? 'block' : 'none';
+
+            // 管理者タイムライン表示
+            const tl = document.getElementById('timeline-list'); tl.innerHTML = '';
+            formations.forEach((form, idx) => {
+                const btn = document.createElement('button');
+                btn.className = 'frame-btn';
+                btn.innerText = form.name;
+                btn.style.backgroundColor = currentFrameIndex === idx ? '#2563eb' : '#f8fafc';
+                btn.style.color = currentFrameIndex === idx ? 'white' : '#334155';
+                btn.onclick = () => { currentFrameIndex = idx; updateUI(); };
+                tl.appendChild(btn);
+            });
+
+            // 出演者タイムライン表示
+            const ptl = document.getElementById('performer-timeline'); ptl.innerHTML = '';
+            formations.forEach((form, idx) => {
+                const btn = document.createElement('button');
+                btn.className = 'frame-btn';
+                btn.innerText = form.name.split(' ')[0] || form.name; // ①や②だけ表示
+                btn.style.backgroundColor = currentFrameIndex === idx ? '#ea580c' : '#f1f5f9';
+                btn.style.color = currentFrameIndex === idx ? 'white' : '#334155';
+                btn.onclick = () => { currentFrameIndex = idx; updateUI(); };
+                ptl.appendChild(btn);
+            });
+
+            document.getElementById('frame-name-input').value = formations[currentFrameIndex].name;
+            document.getElementById('performer-current-name').innerText = `現在：${formations[currentFrameIndex].name}`;
+            draw();
+        }
+
+        // イベント設定
+        document.getElementById('toggle-admin').onclick = () => { isAdminMode = true; updateUI(); };
+        document.getElementById('toggle-performer').onclick = () => { isAdminMode = false; updateUI(); };
+        document.getElementById('frame-name-input').oninput = e => { formations[currentFrameIndex].name = e.target.value; updateUI(); };
+        
+        document.getElementById('add-frame-btn').onclick = () => {
+            const currentForm = formations[currentFrameIndex];
+            const newIndex = formations.length + 1;
+            formations.push({
+                id: 'f_' + Date.now(),
+                name: `コマ ${newIndex}`,
+                positions: currentForm.positions.map(p => ({...p})) // 位置を引き継ぐ
+            });
+            currentFrameIndex = formations.length - 1;
+            updateUI();
+        };
+
+        document.getElementById('total-count-input').onchange = e => {
+            totalCount = Math.max(1, Math.min(150, parseInt(e.target.value) || 70));
+            initFirstFrame();
+            updateSelect();
+            updateUI();
+        };
+
+        function updateSelect() {
+            const select = document.getElementById('my-number-select');
+            select.innerHTML = '<option value="">全体を表示</option>';
+            for(let i=1; i<=totalCount; i++) {
+                const opt = document.createElement('option');
+                opt.value = i; opt.innerText = `${i} 番`;
+                select.appendChild(opt);
+            }
+        }
+
+        document.getElementById('my-number-select').onchange = () => draw();
+
+        // 起動
+        updateSelect();
+        updateUI();
+    </script>
+</body>
+</html>
