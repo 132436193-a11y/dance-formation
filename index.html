@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>ダンスフォーメーションアプリ - 改良版</title>
+    <title>ダンスフォーメーションアプリ - 完成版</title>
     <style>
         * { box-sizing: border-box; font-family: sans-serif; margin: 0; padding: 0; }
         body { background-color: #f1f5f9; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
@@ -103,15 +103,14 @@
 
     <script>
         // --- 状態管理 ---
-        let userRole = null; // 'admin' または 'performer'
-        let myMemberNumber = null; // 出演者の場合の選択番号
+        let userRole = null; 
+        let myMemberNumber = null; 
         let totalCount = 70;
         let currentFrameIndex = 0;
         let formations = [
             { id: 'f1', name: '① オープニング', positions: [] }
         ];
 
-        // 1番〜70番の選択肢をログイン画面に1発で生成（5番で止まるバグを完全修正）
         function buildLoginDropdown() {
             const select = document.getElementById('login-number-select');
             select.innerHTML = '';
@@ -123,19 +122,22 @@
             }
         }
 
-        // 初期配置
+        // 初期配置：最初からギュウギュウに重ならないよう、最初から綺麗に広げて配置
         function initFirstFrame() {
             formations[0].positions = [];
+            const cols = 10; // 1列10人ずつの綺麗なブロックを作る
             for(let i = 0; i < totalCount; i++) {
+                const row = Math.floor(i / cols);
+                const col = i % cols;
                 formations[0].positions.push({
                     memberNumber: i + 1,
-                    x: 150 + (i / (totalCount - 1 || 1)) * 700,
-                    y: 550
+                    x: 180 + col * 70,  // 横に重ならないよう適度に離す
+                    y: 350 + row * 70   // 縦に重ならないよう適度に離す
                 });
             }
         }
 
-        // --- ログイン処理（完全分離の壁） ---
+        // --- ログイン処理 ---
         function switchLoginTab(type) {
             document.getElementById('tab-perf').className = type === 'perf' ? 'tab-btn active' : 'tab-btn';
             document.getElementById('tab-admin').className = type === 'admin' ? 'tab-btn active' : 'tab-btn';
@@ -152,7 +154,7 @@
 
         function loginAsAdmin() {
             const pass = document.getElementById('admin-password').value;
-            if(pass === '1234') { // パスワードはここで自由に変更できます
+            if(pass === '1234') { 
                 userRole = 'admin';
                 myMemberNumber = null;
                 document.getElementById('login-screen').style.display = 'none';
@@ -186,14 +188,14 @@
             updateUI();
         }
 
-        // --- キャンバス描画と手動ドラッグ強化 ---
+        // --- キャンバス描画 ---
         const canvas = document.getElementById('stageCanvas');
         const ctx = canvas.getContext('2d');
         let isDragging = false;
         let draggedNumber = null;
 
         function draw() {
-            const size = 600; // 内部解像度
+            const size = 600; 
             canvas.width = size; canvas.height = size;
             ctx.clearRect(0, 0, size, size);
 
@@ -211,37 +213,62 @@
             const currentForm = formations[currentFrameIndex];
             if (!currentForm) return;
 
+            // 他の人たちを先に描画（自分の丸が一番上に乗るようにする）
             currentForm.positions.forEach(pos => {
+                const isMe = (userRole === 'performer' && pos.memberNumber === myMemberNumber);
+                if (isMe) return; // 自分の描画は後回し
+
                 const drawX = (pos.x / 1000) * size;
                 const drawY = (pos.y / 1000) * size;
-                
-                const isMe = (userRole === 'performer' && pos.memberNumber === myMemberNumber);
                 const isSelected = (userRole === 'admin' && pos.memberNumber === draggedNumber);
 
                 ctx.beginPath();
-                ctx.arc(drawX, drawY, isMe ? 15 : 10, 0, Math.PI * 2);
-
-                if (userRole === 'admin') {
-                    ctx.fillStyle = isSelected ? '#ef4444' : '#3b82f6';
-                } else {
-                    ctx.fillStyle = isMe ? '#ea580c' : '#3b82f6';
-                    if (isMe) { ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 3; }
-                }
+                ctx.arc(drawX, drawY, 11, 0, Math.PI * 2);
+                ctx.fillStyle = isSelected ? '#ef4444' : '#3b82f6';
+                ctx.strokeStyle = '#ffffff';
+                ctx.lineWidth = 1.5;
                 ctx.fill();
-                if (isMe) ctx.stroke();
+                ctx.stroke();
 
-                // 番号テキスト
                 ctx.fillStyle = '#ffffff';
-                ctx.font = isMe ? 'bold 13px sans-serif' : '10px sans-serif';
+                ctx.font = '10px sans-serif';
                 ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
                 ctx.fillText(pos.memberNumber, drawX, drawY);
             });
+
+            // 最後に自分（または選択中の丸）を目立たせて描画
+            if (userRole === 'performer') {
+                const myPos = currentForm.positions.find(p => p.memberNumber === myMemberNumber);
+                if (myPos) {
+                    const drawX = (myPos.x / 1000) * size;
+                    const drawY = (myPos.y / 1000) * size;
+
+                    // 目立たせるための外光（グローエフェクト）
+                    ctx.shadowColor = '#ea580c';
+                    ctx.shadowBlur = 15;
+
+                    ctx.beginPath();
+                    ctx.arc(drawX, drawY, 16, 0, Math.PI * 2); // 一回り大きく
+                    ctx.fillStyle = '#ea580c'; // 鮮やかなオレンジ
+                    ctx.strokeStyle = '#ffffff';
+                    ctx.lineWidth = 3;
+                    ctx.fill();
+                    ctx.stroke();
+
+                    // シャドウをリセット
+                    ctx.shadowBlur = 0;
+
+                    ctx.fillStyle = '#ffffff';
+                    ctx.font = 'bold 13px sans-serif';
+                    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+                    ctx.fillText(myPos.memberNumber, drawX, drawY);
+                }
+            }
         }
 
-        // 🗺️ タッチ・クリック座標をキャンバスの1000x1000スケールに正確に変換（手動調整バグを修正）
+        // 🗺️ 座標変換ロジック
         function getCanvasMousePos(e) {
             const rect = canvas.getBoundingClientRect();
-            // クライアント座標（タッチ・マウス両対応）
             const clientX = e.touches ? e.touches[0].clientX : e.clientX;
             const clientY = e.touches ? e.touches[0].clientY : e.clientY;
             
@@ -250,19 +277,18 @@
             return { x: mouseX, y: mouseY };
         }
 
-        // ドラッグ開始（管理者のみ、判定半径を35に拡大して掴みやすく調整）
         function handleStart(e) {
             if (userRole !== 'admin') return;
             const pos = getCanvasMousePos(e);
             const currentForm = formations[currentFrameIndex];
-            // クリック判定を広め（35ピクセル）にして掴みやすく
-            const hit = currentForm.positions.find(p => Math.sqrt(Math.pow(p.x - pos.x, 2) + Math.pow(p.y - pos.y, 2)) < 35);
+            // 判定を「45ピクセル」まで拡大して、指でも絶対に掴めるように調整
+            const hit = currentForm.positions.find(p => Math.sqrt(Math.pow(p.x - pos.x, 2) + Math.pow(p.y - pos.y, 2)) < 45);
             if (hit) { isDragging = true; draggedNumber = hit.memberNumber; draw(); }
         }
 
         function handleMove(e) {
             if (!isDragging || draggedNumber === null) return;
-            e.preventDefault(); // スクロール暴走防止
+            if (e.cancelable) e.preventDefault(); 
             const pos = getCanvasMousePos(e);
             const currentForm = formations[currentFrameIndex];
             const target = currentForm.positions.find(p => p.memberNumber === draggedNumber);
@@ -275,12 +301,10 @@
 
         function handleEnd() { isDragging = false; draggedNumber = null; draw(); }
 
-        // マウスイベント登録
         canvas.addEventListener('mousedown', handleStart);
         canvas.addEventListener('mousemove', handleMove);
         canvas.addEventListener('mouseup', handleEnd);
         canvas.addEventListener('mouseleave', handleEnd);
-        // スマホ・タッチパネル用イベント登録（Chromebook対応）
         canvas.addEventListener('touchstart', handleStart, { passive: false });
         canvas.addEventListener('touchmove', handleMove, { passive: false });
         canvas.addEventListener('touchend', handleEnd);
@@ -301,7 +325,6 @@
             draw();
         };
 
-        // --- UI更新 ---
         function updateUI() {
             const tl = document.getElementById('timeline-list');
             tl.innerHTML = '';
@@ -311,7 +334,6 @@
                 btn.className = 'frame-btn';
                 btn.innerText = form.name;
                 
-                // 現在選ばれているコマの色分け
                 if (currentFrameIndex === idx) {
                     btn.style.backgroundColor = userRole === 'admin' ? '#2563eb' : '#ea580c';
                     btn.style.color = 'white';
@@ -330,7 +352,6 @@
             draw();
         }
 
-        // イベント設定
         document.getElementById('frame-name-input').oninput = e => {
             if(userRole === 'admin') { formations[currentFrameIndex].name = e.target.value; updateUI(); }
         };
@@ -356,7 +377,6 @@
             updateUI();
         };
 
-        // アプリ起動時の初期化
         buildLoginDropdown();
         initFirstFrame();
     </script>
