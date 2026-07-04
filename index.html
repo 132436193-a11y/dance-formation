@@ -3,21 +3,22 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>ダンスフォーメーションアプリ - プロ版</title>
+    <title>ダンスフォーメーションアプリ - 究極完全版</title>
     <style>
         * { box-sizing: border-box; font-family: sans-serif; margin: 0; padding: 0; }
         body { background-color: #f1f5f9; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
         
         /* ① ヘッダー */
         .header { background-color: #1e293b; color: white; padding: 12px; display: flex; justify-content: space-between; align-items: center; height: 50px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); z-index: 10; }
-        .status-badge { font-size: 14px; font-weight: bold; background-color: #334155; padding: 4px 10px; border-radius: 20px; }
+        .status-badge { font-size: 13px; font-weight: bold; background-color: #334155; padding: 4px 10px; border-radius: 20px; color: white; }
         .header-btns { display: flex; gap: 6px; }
         .header-btn { background-color: #475569; color: white; border: none; padding: 4px 8px; border-radius: 4px; font-size: 12px; cursor: pointer; font-weight: bold; }
         .logout-btn { background-color: #ef4444; }
 
-        /* ② 指示メモパネル */
+        /* ② 指示メモ・保存読み込みパネル */
         .top-info-panel { background-color: #1e293b; color: white; padding: 6px 12px; font-size: 13px; display: flex; flex-direction: column; gap: 4px; border-bottom: 1px solid #334155; z-index: 10; }
         .memo-box { background-color: #fffae6; color: #7a5f00; padding: 8px; border-radius: 6px; border-left: 4px solid #d97706; font-weight: bold; font-size: 14px; margin-top: 2px; width: 100%; }
+        .save-load-row { display: flex; gap: 10px; align-items: center; background: #2d3748; padding: 4px 8px; border-radius: 6px; margin-bottom: 2px; }
 
         /* ③ コンテンツ（中央キャンバス） */
         .content { flex: 1; background-color: #0f172a; display: flex; justify-content: center; align-items: center; padding: 5px; overflow: hidden; position: relative; }
@@ -44,15 +45,16 @@
         .time-display { font-family: monospace; font-size: 13px; color: #334155; font-weight: bold; white-space: nowrap; }
         .seek-bar { flex: 1; height: 8px; cursor: pointer; accent-color: #2563eb; }
         
-        .timeline { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 2px; -webkit-overflow-scrolling: touch; }
+        /* タイムライン */
+        .timeline { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px; -webkit-overflow-scrolling: touch; }
         .frame-btn { padding: 6px 10px; font-size: 12px; font-weight: bold; border-radius: 6px; border: 1px solid #cbd5e1; cursor: pointer; white-space: nowrap; transition: all 0.2s; text-align: left; }
         .frame-time-tag { display: block; font-size: 9px; color: #64748b; font-weight: normal; margin-top: 1px; }
         
         .control-grid { display: flex; flex-direction: column; gap: 4px; width: 100%; }
         .template-scroll { display: flex; gap: 4px; overflow-x: auto; padding: 2px 0; -webkit-overflow-scrolling: touch; width: 100%; }
         .action-btn { padding: 5px 8px; font-size: 11px; font-weight: bold; background-color: #f1f5f9; color: #334155; border: 1px solid #cbd5e1; border-radius: 6px; cursor: pointer; white-space: nowrap; }
-        .add-btn { background-color: #10b981; color: white; border: none; padding: 5px 10px; font-size: 12px; }
-        .del-btn { background-color: #ef4444; color: white; border: none; padding: 5px 10px; font-size: 12px; }
+        .add-btn { background-color: #10b981; color: white; border: none; padding: 5px 12px; font-size: 12px; font-weight: bold; border-radius: 6px; cursor: pointer; }
+        .del-btn { background-color: #ef4444; color: white; border: none; padding: 5px 12px; font-size: 12px; font-weight: bold; border-radius: 6px; cursor: pointer; }
         
         /* 🔒 ログイン画面用 */
         .login-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background-color: #0f172a; display: flex; justify-content: center; align-items: center; z-index: 999; padding: 20px; }
@@ -66,7 +68,9 @@
         
         select, input[type="text"], input[type="number"] { padding: 4px; border-radius: 6px; border: 1px solid #cbd5e1; font-size: 12px; }
         textarea { width: 100%; height: 38px; padding: 6px; border-radius: 6px; border: 1px solid #cbd5e1; font-size: 12px; resize: none; color: #334155; background-color: white; }
-        .audio-file-input { font-size: 11px; color: #475569; max-width: 150px; }
+        .audio-file-input { font-size: 11px; color: #475569; max-width: 140px; }
+        .speed-btn { padding: 2px 6px; font-size: 11px; border: 1px solid #cbd5e1; background: white; border-radius: 4px; cursor: pointer; font-weight: bold; }
+        .speed-btn.active { background-color: #2563eb; color: white; border-color: #2563eb; }
     </style>
 </head>
 <body>
@@ -97,14 +101,24 @@
 
     <div class="header">
         <span id="display-mode-title" style="font-weight: bold; font-size: 14px;">読み込み中...</span>
-        <div class="header-btns">
-            <button class="header-btn" onclick="toggleFullScreen()">🖥️ 大画面</button>
-            <button class="header-btn" onclick="resetZoom()">🔍 位置リセット</button>
-            <button class="header-btn logout-btn" onclick="logout()">ログアウト</button>
+        <div style="display: flex; align-items: center; gap: 8px;">
+            <span id="status-badge" class="status-badge">----</span>
+            <div class="header-btns">
+                <button class="header-btn" onclick="toggleFullScreen()">🖥️ 大画面</button>
+                <button class="header-btn" onclick="resetZoom()">🔍 位置リセット</button>
+                <button class="header-btn logout-btn" onclick="logout()">ログアウト</button>
+            </div>
         </div>
     </div>
 
     <div class="top-info-panel">
+        <div id="admin-file-io-wrap" class="save-load-row" style="display: none;">
+            <span style="font-weight: bold; color: #a0aec0; font-size: 11px;">💾 構成ファイル操作:</span>
+            <button class="header-btn" style="background-color: #3182ce;" onclick="exportDataFile()">📥 構成をファイルに保存(書き出し)</button>
+            <input type="file" id="data-file-import" accept=".json" style="display: none;" onchange="importDataFile(this)">
+            <button class="header-btn" style="background-color: #dd6b20;" onclick="document.getElementById('data-file-import').click()">📤 ファイルから読み込み</button>
+        </div>
+
         <div id="admin-memo-input-wrap" style="display: none;">
             <span style="font-weight: bold; color: #cbd5e1;">📝 このコマの指示メモ（管理者用に入力）:</span>
             <textarea id="frame-memo-input" placeholder="例: 1番〜10番はダッシュで移動！サビ頭で手をあげる"></textarea>
@@ -125,10 +139,16 @@
                 <span id="time-display" class="time-display">00:00 / 00:00</span>
                 <input type="range" id="seek-bar" class="seek-bar" value="0" min="0" max="100" step="0.1" oninput="handleSeekBar(this.value)">
             </div>
-            <div id="audio-file-picker-row" style="display: flex; align-items: center; justify-content: space-between; gap: 4px;">
-                <div style="display: flex; align-items: center; gap: 4px;">
+            <div id="audio-file-picker-row" style="display: flex; align-items: center; justify-content: space-between; gap: 4px; flex-wrap: wrap;">
+                <div style="display: flex; align-items: center; gap: 6px;">
                     <span style="font-size: 11px; font-weight: bold; color: #475569;">🎵 練習曲:</span>
                     <input type="file" id="audio-file-input" class="audio-file-input" accept="audio/*" onchange="loadAudioFile(this)">
+                </div>
+                <div style="display: flex; align-items: center; gap: 3px;">
+                    <span style="font-size: 11px; font-weight: bold; color: #475569;">🐢 速度:</span>
+                    <button id="speed-05" class="speed-btn" onclick="changePlaybackSpeed(0.5)">0.5x</button>
+                    <button id="speed-075" class="speed-btn" onclick="changePlaybackSpeed(0.75)">0.75x</button>
+                    <button id="speed-10" class="speed-btn active" onclick="changePlaybackSpeed(1.0)">1.0x(標準)</button>
                 </div>
                 <button id="audio-mark-btn" class="action-btn" style="background-color: #ea580c; color: white; display: none; font-size: 11px; padding: 4px 6px;" onclick="markCurrentTime()">⏱️ 再生位置をコマに記憶</button>
             </div>
@@ -138,18 +158,17 @@
         
         <div class="control-grid">
             <div id="admin-controls" style="display: none; flex-direction: column; gap: 4px; width: 100%;">
-                <div class="admin-row-1">
-                    <div style="display: flex; align-items: center; gap: 4px; font-size: 11px; flex-wrap: wrap;">
-                        <span>コマ名:</span> <input type="text" id="frame-name-input" style="width: 65px;">
-                        <span>秒数:</span> <input type="number" id="frame-time-input" value="0.0" step="0.1" min="0" style="width: 50px; text-align: center;">秒
-                        <button id="add-frame-btn" class="frame-btn add-btn">➕ コマ追加</button>
-                        <button id="del-frame-btn" class="frame-btn del-btn" onclick="deleteCurrentFrame()">❌ コマ削除</button>
-                        <span>人数:</span> <input type="number" id="total-count-input" value="70" style="width: 35px;">人
-                    </div>
+                <div class="admin-row-1" style="display: flex; align-items: center; gap: 4px; font-size: 11px; flex-wrap: wrap;">
+                    <span>コマ名:</span> <input type="text" id="frame-name-input" style="width: 65px;">
+                    <span>秒数:</span> <input type="number" id="frame-time-input" value="0.0" step="0.1" min="0" style="width: 50px; text-align: center;">秒
+                    <button id="add-frame-btn" class="add-btn" onclick="addNewFrame()">➕ コマ追加</button>
+                    <button id="del-frame-btn" class="del-btn" onclick="deleteCurrentFrame()">❌ コマ削除</button>
+                    <span style="margin-left: 5px;">人数:</span> <input type="number" id="total-count-input" value="70" style="width: 35px;">人
                 </div>
+                
                 <div style="font-size: 11px; display: flex; align-items: center; gap: 4px; background: #f1f5f9; padding: 3px; border-radius: 4px;">
                     <span style="font-weight: bold; color: #475569;">🎨 グループ色分け:</span>
-                    <span>番〜</span><input type="number" id="color-end-input" value="10" style="width:35px; text-align:center;">番を
+                    <span>1番〜</span><input type="number" id="color-end-input" value="10" style="width:35px; text-align:center;">番を
                     <select id="color-select" style="padding: 2px;">
                         <option value="#3b82f6">🔵 青 (標準)</option>
                         <option value="#10b981">🟢 緑</option>
@@ -159,6 +178,7 @@
                     </select>
                     <button class="action-btn" style="padding:2px 6px;" onclick="applyGroupColor()">色を適用</button>
                 </div>
+
                 <div class="template-scroll">
                     <button onclick="applyTemplate('line')" class="action-btn">↔️ 横一列</button>
                     <button onclick="applyTemplate('vertLine')" class="action-btn">↕️ 縦一列</button>
@@ -187,6 +207,7 @@
         let myMemberNumber = null; 
         let totalCount = 70;
         let currentFrameIndex = 0;
+        let currentPlaybackSpeed = 1.0;
         
         // 🎵 同期エンジン
         const audio = document.getElementById('main-audio');
@@ -202,18 +223,19 @@
         let offsetY = 0;
         let isPanning = false;
         let startPanX = 0, startPanY = 0;
-        let lastTouchDist = 0; // スマホピンチ用
+        let lastTouchDist = 0; 
 
         // 👥 複数人選択（ドラッグ矩形選択）用
         let isSelecting = false;
         let selectStart = {x:0, y:0};
         let selectEnd = {x:0, y:0};
-        let selectedNumbers = []; // 現在選択されているメンバーの番号
-        let dragStartPositions = []; // ドラッグ開始時の各メンバーの位置
+        let selectedNumbers = []; 
+        let dragStartPositions = []; 
+        let draggedNumber = null;
 
         let formations = [
             { id: 'f1', name: '① 開幕', memo: '曲の始まりの立ち位置です！', time: 0.0, positions: [] },
-            { id: 'f2', name: '② サビ頭', memo: 'サビ（4秒時点）で一形変形！', time: 4.0, positions: [] }
+            { id: 'f2', name: '② サビ頭', memo: 'サビ（4秒時点）で一斉に変形！', time: 4.0, positions: [] }
         ];
 
         function buildLoginDropdown() {
@@ -259,14 +281,99 @@
             zoom = 1.0; offsetX = 0; offsetY = 0; draw();
         }
 
+        // ➕ コマの追加関数
+        function addNewFrame() {
+            if(userRole !== 'admin') return;
+            const currentForm = formations[currentFrameIndex];
+            const nextTime = currentForm.time + 3.0;
+            formations.push({ 
+                id: 'f_' + Date.now(), 
+                name: `コマ ${formations.length + 1}`, 
+                memo: '', 
+                time: nextTime, 
+                positions: currentForm.positions.map(p => ({...p})) 
+            });
+            formations.sort((a, b) => a.time - b.time); 
+            currentFrameIndex = formations.findIndex(f => f.time === nextTime); 
+            selectedNumbers = []; 
+            updateUI();
+        }
+
+        // ❌ コマの削除関数
         function deleteCurrentFrame() {
             if(userRole !== 'admin') return;
             if(formations.length <= 1) { alert('これ以上コマを削除することはできません！'); return; }
             if(confirm(`本当に「${formations[currentFrameIndex].name}」を削除しますか？`)) {
                 formations.splice(currentFrameIndex, 1);
                 currentFrameIndex = Math.max(0, currentFrameIndex - 1);
+                selectedNumbers = [];
                 updateUI();
             }
+        }
+
+        // 🐢 スロー再生切り替え
+        function changePlaybackSpeed(speed) {
+            currentPlaybackSpeed = speed;
+            audio.playbackRate = speed;
+            
+            document.getElementById('speed-05').classList.remove('active');
+            document.getElementById('speed-075').classList.remove('active');
+            document.getElementById('speed-10').classList.remove('active');
+            
+            if(speed === 0.5) document.getElementById('speed-05').classList.add('active');
+            if(speed === 0.75) document.getElementById('speed-075').classList.add('active');
+            if(speed === 1.0) document.getElementById('speed-10').classList.add('active');
+        }
+
+        // 📥 データの書き出し(ファイル保存)
+        function exportDataFile() {
+            if(userRole !== 'admin') return;
+            const dataToSave = {
+                totalCount: totalCount,
+                memberColors: memberColors,
+                formations: formations
+            };
+            const jsonString = JSON.stringify(dataToSave, null, 2);
+            const blob = new Blob([jsonString], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `dance_formation_${new Date().toISOString().slice(0,10)}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        // 📤 データの読み込み
+        function importDataFile(input) {
+            const file = input.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const imported = JSON.parse(e.target.result);
+                    if(imported.totalCount && imported.formations) {
+                        totalCount = imported.totalCount;
+                        memberColors = imported.memberColors || {};
+                        formations = imported.formations;
+                        currentFrameIndex = 0;
+                        selectedNumbers = [];
+                        
+                        document.getElementById('total-count-input').value = totalCount;
+                        buildLoginDropdown();
+                        updateUI();
+                        alert('📁 構成ファイルを正常に読み込みました！');
+                    } else {
+                        alert('無効なファイル形式です。');
+                    }
+                } catch(err) {
+                    alert('ファイルの解析に失敗しました。');
+                }
+            };
+            reader.readAsText(file);
+            input.value = ''; // リセット
         }
 
         // --- 🔒 ログイン・ログアウト ---
@@ -294,24 +401,27 @@
         }
 
         function setupAppMode() {
+            const statusBadge = document.getElementById('status-badge');
             if(userRole === 'admin') {
                 document.getElementById('display-mode-title').innerText = '🛠️ 管理者エディタ';
-                document.getElementById('status-badge').innerText = '編集ロック解除中';
-                document.getElementById('status-badge').style.backgroundColor = '#2563eb';
+                statusBadge.innerText = '編集ロック解除中';
+                statusBadge.style.backgroundColor = '#2563eb';
                 document.getElementById('admin-controls').style.display = 'flex';
                 document.getElementById('performer-controls').style.display = 'none';
                 document.getElementById('admin-memo-input-wrap').style.display = 'block';
                 document.getElementById('performer-memo-wrap').style.display = 'none';
                 document.getElementById('audio-mark-btn').style.display = 'block';
+                document.getElementById('admin-file-io-wrap').style.display = 'flex';
             } else {
                 document.getElementById('display-mode-title').innerText = '📱 出演者マイ画面';
-                document.getElementById('status-badge').innerText = `${myMemberNumber}番`;
-                document.getElementById('status-badge').style.backgroundColor = '#ea580c';
+                statusBadge.innerText = `${myMemberNumber}番`;
+                statusBadge.style.backgroundColor = '#ea580c';
                 document.getElementById('admin-controls').style.display = 'none';
                 document.getElementById('performer-controls').style.display = 'block';
                 document.getElementById('admin-memo-input-wrap').style.display = 'none';
                 document.getElementById('performer-memo-wrap').style.display = 'block';
                 document.getElementById('audio-mark-btn').style.display = 'none';
+                document.getElementById('admin-file-io-wrap').style.display = 'none';
             }
             selectedNumbers = [];
             resetZoom();
@@ -322,13 +432,19 @@
         function loadAudioFile(input) {
             const file = input.files[0]; if (!file) return;
             audio.src = URL.createObjectURL(file); audio.load(); isAudioLoaded = true;
+            setTimeout(() => { audio.playbackRate = currentPlaybackSpeed; }, 200);
         }
         audio.addEventListener('timeupdate', () => { updatePlayerTimeDisplay(); if(!audio.paused) { syncAnimationToAudio(); } });
         audio.addEventListener('ended', () => { document.getElementById('play-pause-btn').innerText = '▶️ 再生'; stopSyncLoop(); });
 
         function togglePlay() {
             if (!isAudioLoaded) { alert('先に「練習曲」ボタンから、音楽ファイルを読み込ませてください！'); return; }
-            if (audio.paused) { audio.play(); document.getElementById('play-pause-btn').innerText = '⏸️ 停止'; startSyncLoop(); } 
+            if (audio.paused) { 
+                audio.playbackRate = currentPlaybackSpeed;
+                audio.play(); 
+                document.getElementById('play-pause-btn').innerText = '⏸️ 停止'; 
+                startSyncLoop(); 
+            } 
             else { audio.pause(); document.getElementById('play-pause-btn').innerText = '▶️ 再生'; stopSyncLoop(); }
         }
         function handleSeekBar(val) { if (!isAudioLoaded) return; audio.currentTime = (val / 100) * audio.duration; syncAnimationToAudio(); }
@@ -365,7 +481,7 @@
             updateUIWithoutRedraw();
         }
 
-        // --- 🗺️ 高機能グラフィックエンジン ---
+        // --- 🗺️ グラフィックエンジン ---
         const canvas = document.getElementById('stageCanvas'); const ctx = canvas.getContext('2d');
 
         function draw() { if (isAudioLoaded && !audio.paused) return; const currentForm = formations[currentFrameIndex]; if (currentForm) renderPositionsDirect(currentForm.positions); }
@@ -384,8 +500,6 @@
             positions.forEach(pos => {
                 if (userRole === 'performer' && pos.memberNumber === myMemberNumber) return;
                 const drawX = (pos.x / 1000) * size, drawY = (pos.y / 1000) * size;
-                
-                // 選択されているかどうかの判定
                 const isSelected = selectedNumbers.includes(pos.memberNumber);
 
                 ctx.beginPath(); ctx.arc(drawX, drawY, 11, 0, Math.PI * 2);
@@ -402,7 +516,6 @@
             }
             ctx.restore();
 
-            // 複数選択用の四角形枠の描画（画面座標系）
             if (isSelecting && userRole === 'admin') {
                 ctx.strokeStyle = 'rgba(239, 68, 68, 0.8)'; ctx.lineWidth = 1.5;
                 ctx.fillStyle = 'rgba(239, 68, 68, 0.15)';
@@ -448,31 +561,24 @@
             ctx.fillStyle = '#ffffff'; ctx.font = 'bold 13px sans-serif'; ctx.fillText(myMemberNumber, x, y + 0.5);
         }
 
-        // --- 🖱️ マウス/タッチ座標変換エンジン ---
+        // --- 座標計算系 ---
         function getCoordinates(e) {
             const rect = canvas.getBoundingClientRect();
             const clientX = e.touches ? e.touches[0].clientX : e.clientX;
             const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-            
-            // キャンバス内の生ピクセル座標
             const canvasX = ((clientX - rect.left) / rect.width) * 600;
             const canvasY = ((clientY - rect.top) / rect.height) * 600;
-
-            // カメラの拡大・縮小・移動を逆計算した「ステージデータ座標 (0〜1000)」
             const size = 600;
             const dataX = (((canvasX - size/2 - offsetX) / zoom) + size/2) * (1000 / size);
             const dataY = (((canvasY - size/2 - offsetY) / zoom) + size/2) * (1000 / size);
-
             return { dataX, dataY, canvasX, canvasY };
         }
 
-        // --- 🖐️ タッチ・ドラッグ・拡大縮小・範囲選択の一体型操作ロジック ---
-        let dragMode = null; // 'move_member', 'select_box', 'pan_camera'
+        // --- 操作ロジック ---
+        let dragMode = null; 
 
         function handleStart(e) {
             if (!audio.paused) return;
-
-            // スマホの2本指ピンチ操作の検出
             if (e.touches && e.touches.length === 2) {
                 dragMode = 'pan_camera'; isPanning = true;
                 lastTouchDist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
@@ -481,30 +587,20 @@
 
             const coords = getCoordinates(e);
             const currentForm = formations[currentFrameIndex];
-
-            // 1. メンバーを掴んだか判定
             const hit = currentForm.positions.find(p => Math.sqrt(Math.pow(p.x - coords.dataX, 2) + Math.pow(p.y - coords.dataY, 2)) < 35);
 
             if (userRole === 'admin' && hit) {
                 dragMode = 'move_member';
                 draggedNumber = hit.memberNumber;
-                
-                // 掴んだメンバーが、事前に選択されたグループに含まれていない場合は単一選択にする
-                if (!selectedNumbers.includes(draggedNumber)) {
-                    selectedNumbers = [draggedNumber];
-                }
-
-                // 移動開始時の全員の位置を記憶する
+                if (!selectedNumbers.includes(draggedNumber)) { selectedNumbers = [draggedNumber]; }
                 dragStartPositions = currentForm.positions.map(p => ({...p}));
                 startPanX = coords.dataX; startPanY = coords.dataY;
             } 
             else if (userRole === 'admin' && !e.shiftKey && !e.touches) {
-                // 何もないところをドラッグしたら「範囲選択」モード
                 dragMode = 'select_box'; isSelecting = true;
                 selectStart = coords; selectEnd = coords;
             } 
             else {
-                // 出演者、またはShiftキーを押しながら、またはスマホなら「カメラの移動」
                 dragMode = 'pan_camera'; isPanning = true;
                 const clientX = e.touches ? e.touches[0].clientX : e.clientX;
                 const clientY = e.touches ? e.touches[0].clientY : e.clientY;
@@ -515,16 +611,11 @@
 
         function handleMove(e) {
             if (!audio.paused) return;
-
-            // スマホの2本指ピンチ（拡大・縮小）処理
             if (e.touches && e.touches.length === 2 && dragMode === 'pan_camera') {
                 if (e.cancelable) e.preventDefault();
                 const dist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
-                const factor = dist / lastTouchDist;
-                zoom = Math.max(0.5, Math.min(5.0, zoom * factor));
-                lastTouchDist = dist;
-                draw();
-                return;
+                zoom = Math.max(0.5, Math.min(5.0, zoom * (dist / lastTouchDist)));
+                lastTouchDist = dist; draw(); return;
             }
 
             const coords = getCoordinates(e);
@@ -532,12 +623,7 @@
 
             if (dragMode === 'move_member' && draggedNumber !== null) {
                 if (e.cancelable) e.preventDefault();
-                
-                // 移動した距離を計算
-                const deltaX = coords.dataX - startPanX;
-                const deltaY = coords.dataY - startPanY;
-
-                // 選択されている全員を一斉に同じ分だけ動かす！
+                const deltaX = coords.dataX - startPanX; const deltaY = coords.dataY - startPanY;
                 selectedNumbers.forEach(num => {
                     const orig = dragStartPositions.find(p => p.memberNumber === num);
                     const target = currentForm.positions.find(p => p.memberNumber === num);
@@ -550,22 +636,18 @@
             } 
             else if (dragMode === 'select_box' && isSelecting) {
                 if (e.cancelable) e.preventDefault();
-                selectEnd = coords;
-                draw();
+                selectEnd = coords; draw();
             } 
             else if (dragMode === 'pan_camera' && isPanning) {
                 if (e.cancelable) e.preventDefault();
                 const clientX = e.touches ? e.touches[0].clientX : e.clientX;
                 const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-                offsetX = clientX - startPanX;
-                offsetY = clientY - startPanY;
-                draw();
+                offsetX = clientX - startPanX; offsetY = clientY - startPanY; draw();
             }
         }
 
         function handleEnd() {
             if (dragMode === 'select_box' && isSelecting) {
-                // 範囲枠の中にいるメンバーを割り出す
                 const currentForm = formations[currentFrameIndex];
                 const xMin = Math.min(selectStart.dataX, selectEnd.dataX);
                 const xMax = Math.max(selectStart.dataX, selectEnd.dataX);
@@ -574,31 +656,28 @@
 
                 selectedNumbers = [];
                 currentForm.positions.forEach(pos => {
-                    if (pos.x >= xMin && pos.x <= xMax && pos.y >= yMin && pos.y <= yMax) {
-                        selectedNumbers.push(pos.memberNumber);
-                    }
+                    if (pos.x >= xMin && pos.x <= xMax && pos.y >= yMin && pos.y <= yMax) { selectedNumbers.push(pos.memberNumber); }
                 });
                 isSelecting = false;
             }
-            dragMode = null; draggedNumber = null; isPanning = false; isSelecting = false;
-            draw();
+            dragMode = null; draggedNumber = null; isPanning = false; isSelecting = false; draw();
         }
 
-        // マウスホイールでの拡大・縮小
         canvas.addEventListener('wheel', e => {
             e.preventDefault();
-            const zoomFactor = 1.1;
-            if (e.deltaY < 0) { zoom = Math.min(5.0, zoom * zoomFactor); } 
-            else { zoom = Math.max(0.5, zoom / zoomFactor); }
+            if (e.deltaY < 0) { zoom = Math.min(5.0, zoom * 1.1); } else { zoom = Math.max(0.5, zoom / 1.1); }
             draw();
         }, { passive: false });
 
         canvas.addEventListener('mousedown', handleStart); canvas.addEventListener('mousemove', handleMove); canvas.addEventListener('mouseup', handleEnd); canvas.addEventListener('mouseleave', handleEnd);
         canvas.addEventListener('touchstart', handleStart, { passive: false }); canvas.addEventListener('touchmove', handleMove, { passive: false }); canvas.addEventListener('touchend', handleEnd);
 
-        // --- 9大フォーメーションテンプレート ---
+        // --- 9大フォーメーションテンプレート (完全版) ---
         window.applyTemplate = function(type) {
-            if(userRole !== 'admin' || !audio.paused) return; const currentForm = formations[currentFrameIndex]; currentForm.positions = [];
+            if(userRole !== 'admin' || !audio.paused) return; 
+            const currentForm = formations[currentFrameIndex]; 
+            currentForm.positions = [];
+            
             for (let i = 0; i < totalCount; i++) {
                 const num = i + 1; let x = 500, y = 550; const rate = i / (totalCount - 1 || 1);
                 if (type === 'line') { x = 120 + rate * 760; y = 550; }
@@ -615,7 +694,7 @@
             selectedNumbers = []; draw();
         };
 
-        // --- UI表示コントロール ---
+        // --- UI表示同期コントロール ---
         function updateUI() { updateUIWithoutRedraw(); draw(); }
 
         function updateUIWithoutRedraw() {
@@ -655,14 +734,6 @@
             formations.sort((a, b) => a.time - b.time); updateUI();
         };
         document.getElementById('frame-memo-input').oninput = e => { if(userRole === 'admin') { formations[currentFrameIndex].memo = e.target.value; } };
-        
-        document.getElementById('add-frame-btn').onclick = () => {
-            if(userRole !== 'admin') return; const currentForm = formations[currentFrameIndex];
-            const nextTime = currentForm.time + 3.0;
-            formations.push({ id: 'f_' + Date.now(), name: `コマ ${formations.length + 1}`, memo: '', time: nextTime, positions: currentForm.positions.map(p => ({...p})) });
-            formations.sort((a, b) => a.time - b.time); currentFrameIndex = formations.findIndex(f => f.time === nextTime); selectedNumbers = []; updateUI();
-        };
-
         document.getElementById('total-count-input').onchange = e => { if(userRole !== 'admin') return; totalCount = Math.max(1, Math.min(150, parseInt(e.target.value) || 70)); initFirstFrame(); buildLoginDropdown(); updateUI(); };
 
         ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
