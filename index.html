@@ -3,31 +3,39 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>ダンスフォーメーションアプリ - 完成版</title>
+    <title>ダンスフォーメーションアプリ - メモ＆多機能テンプレ版</title>
     <style>
         * { box-sizing: border-box; font-family: sans-serif; margin: 0; padding: 0; }
         body { background-color: #f1f5f9; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
         
-        /* ① ヘッダー（最上部） */
+        /* ① ヘッダー */
         .header { background-color: #1e293b; color: white; padding: 12px; display: flex; justify-content: space-between; align-items: center; height: 50px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
         .status-badge { font-size: 14px; font-weight: bold; background-color: #334155; padding: 4px 10px; border-radius: 20px; }
         .logout-btn { background-color: #ef4444; color: white; border: none; padding: 4px 8px; border-radius: 4px; font-size: 11px; cursor: pointer; }
 
-        /* ② コンテンツ（中央：フォーメーション表示） */
+        /* ② コントロールとメモ（キャンバスの上、状況に応じて変化） */
+        .top-info-panel { background-color: #1e293b; color: white; padding: 6px 12px; font-size: 13px; display: flex; flex-direction: column; gap: 4px; border-bottom: 1px solid #334155; }
+        .memo-box { background-color: #fffae6; color: #7a5f00; padding: 8px; border-radius: 6px; border-left: 4px solid #d97706; font-weight: bold; font-size: 14px; margin-top: 2px; }
+
+        /* ③ コンテンツ（中央：キャンバス） */
         .content { flex: 1; background-color: #0f172a; display: flex; justify-content: center; align-items: center; padding: 10px; overflow: hidden; position: relative; }
         canvas { background-color: white; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.3); max-width: 100%; max-height: 100%; aspect-ratio: 1/1; cursor: grab; touch-action: none; }
         canvas:active { cursor: grabbing; }
 
-        /* ③ フッター（最下部：操作関係） */
-        .footer { background-color: #ffffff; border-top: 1px solid #cbd5e1; padding: 10px; min-height: 120px; display: flex; flex-direction: column; gap: 8px; box-shadow: 0 -2px 10px rgba(0,0,0,0.05); }
-        .timeline { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; -webkit-overflow-scrolling: touch; }
+        /* ④ フッター（最下部：操作関係を整理） */
+        .footer { background-color: #ffffff; border-top: 1px solid #cbd5e1; padding: 10px; box-shadow: 0 -2px 10px rgba(0,0,0,0.05); display: flex; flex-direction: column; gap: 6px; }
+        .timeline { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px; -webkit-overflow-scrolling: touch; }
         .frame-btn { padding: 6px 12px; font-size: 12px; font-weight: bold; border-radius: 6px; border: 1px solid #cbd5e1; cursor: pointer; white-space: nowrap; transition: all 0.2s; }
-        .control-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%; }
-        .btn-group { display: flex; gap: 4px; }
-        .action-btn { padding: 8px 12px; font-size: 12px; font-weight: bold; background-color: #f1f5f9; color: #334155; border: 1px solid #cbd5e1; border-radius: 6px; cursor: pointer; }
-        .add-btn { background-color: #10b981; color: white; border: none; }
         
-        /* ログイン・初期画面用スタイル */
+        .control-grid { display: flex; flex-direction: column; gap: 6px; width: 100%; }
+        .admin-row-1 { display: flex; align-items: center; justify-content: space-between; gap: 6px; flex-wrap: wrap; }
+        
+        /* テンプレートボタン用のスクロールエリア */
+        .template-scroll { display: flex; gap: 4px; overflow-x: auto; padding: 2px 0; -webkit-overflow-scrolling: touch; width: 100%; }
+        .action-btn { padding: 6px 10px; font-size: 11px; font-weight: bold; background-color: #f1f5f9; color: #334155; border: 1px solid #cbd5e1; border-radius: 6px; cursor: pointer; white-space: nowrap; }
+        .add-btn { background-color: #10b981; color: white; border: none; padding: 6px 12px; font-size: 12px; }
+        
+        /* ログイン画面 */
         .login-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background-color: #0f172a; display: flex; justify-content: center; align-items: center; z-index: 999; padding: 20px; }
         .login-card { background-color: white; padding: 30px; border-radius: 12px; width: 100%; max-width: 400px; box-shadow: 0 10px 25px rgba(0,0,0,0.3); text-align: center; }
         .login-card h2 { color: #1e293b; margin-bottom: 20px; font-size: 20px; }
@@ -37,7 +45,8 @@
         .input-field { width: 100%; padding: 12px; border: 1px solid #cbd5e1; border-radius: 6px; margin-bottom: 15px; font-size: 14px; text-align: center; }
         .submit-btn { width: 100%; padding: 12px; background-color: #2563eb; color: white; border: none; border-radius: 6px; font-weight: bold; font-size: 14px; cursor: pointer; }
         
-        select, input[type="text"], input[type="number"] { padding: 6px; border-radius: 6px; border: 1px solid #cbd5e1; font-size: 12px; }
+        select, input[type="text"], input[type="number"] { padding: 5px; border-radius: 6px; border: 1px solid #cbd5e1; font-size: 12px; }
+        textarea { width: 100%; height: 36px; padding: 4px; border-radius: 6px; border: 1px solid #cbd5e1; font-size: 12px; resize: none; }
     </style>
 </head>
 <body>
@@ -72,6 +81,16 @@
         </div>
     </div>
 
+    <div class="top-info-panel">
+        <div id="admin-memo-input-wrap" style="display: none;">
+            <span style="font-weight: bold; color: #cbd5e1;">📝 このコマの指示メモ（管理者用に入力）:</span>
+            <textarea id="frame-memo-input" placeholder="例: 1番〜10番はダッシュで移動！サビ頭で手をあげる"></textarea>
+        </div>
+        <div id="performer-memo-wrap" style="display: none;">
+            <div class="memo-box" id="performer-memo-text">💡 指示はまだありません</div>
+        </div>
+    </div>
+
     <div class="content">
         <canvas id="stageCanvas"></canvas>
     </div>
@@ -79,24 +98,32 @@
     <div class="footer">
         <div id="timeline-list" class="timeline"></div>
         
-        <div class="control-row">
-            <div id="admin-controls" style="display: flex; align-items: center; gap: 6px; width: 100%; justify-content: space-between; flex-wrap: wrap;">
-                <div style="display: flex; align-items: center; gap: 4px; font-size: 12px;">
-                    <span>コマ名:</span>
-                    <input type="text" id="frame-name-input" style="width: 100px;">
-                    <button id="add-frame-btn" class="frame-btn add-btn">➕ コマ追加</button>
-                    <span style="margin-left: 4px;">人数:</span>
-                    <input type="number" id="total-count-input" value="70" style="width: 45px;">人
+        <div class="control-grid">
+            <div id="admin-controls" style="display: none; flex-direction: column; gap: 6px; width: 100%;">
+                <div class="admin-row-1">
+                    <div style="display: flex; align-items: center; gap: 4px; font-size: 11px;">
+                        <span>コマ名:</span>
+                        <input type="text" id="frame-name-input" style="width: 80px;">
+                        <button id="add-frame-btn" class="frame-btn add-btn">➕ コマ追加</button>
+                        <span style="margin-left: 2px;">人数:</span>
+                        <input type="number" id="total-count-input" value="70" style="width: 40px;">人
+                    </div>
                 </div>
-                <div class="btn-group">
-                    <button onclick="applyTemplate('line')" class="action-btn">↔️ 一列</button>
-                    <button onclick="applyTemplate('circle')" class="action-btn">⭕ 円形</button>
+                <div class="template-scroll">
+                    <button onclick="applyTemplate('line')" class="action-btn">↔️ 横一列</button>
+                    <button onclick="applyTemplate('vertLine')" class="action-btn">↕️ 縦一列</button>
+                    <button onclick="applyTemplate('circle')" class="action-btn">⭕ 正円</button>
                     <button onclick="applyTemplate('vShape')" class="action-btn">🔼 V字</button>
+                    <button onclick="applyTemplate('revVShape')" class="action-btn">🔽 逆V字</button>
+                    <button onclick="applyTemplate('block')" class="action-btn">⬛ 2列ブロック</button>
+                    <button onclick="applyTemplate('xShape')" class="action-btn">✖️ X字</button>
+                    <button onclick="applyTemplate('wave')" class="action-btn">〰️ 波型</button>
+                    <button onclick="applyTemplate('random')" class="action-btn">🎲 散らばり</button>
                 </div>
             </div>
 
-            <div id="performer-controls" style="display: none; width: 100%; font-size: 13px; font-weight: bold; color: #334155;">
-                <span id="performer-instruction">コマを切り替えて位置を確認してください</span>
+            <div id="performer-controls" style="display: none; font-size: 12px; color: #475569; font-weight: bold; text-align: center; padding: 4px;">
+                👆 下のコマボタンを押すと、自分の位置と指示メモが切り替わります
             </div>
         </div>
     </div>
@@ -108,7 +135,7 @@
         let totalCount = 70;
         let currentFrameIndex = 0;
         let formations = [
-            { id: 'f1', name: '① オープニング', positions: [] }
+            { id: 'f1', name: '① オープニング', memo: '最初の立ち位置です。全員綺麗に広がりましょう！', positions: [] }
         ];
 
         function buildLoginDropdown() {
@@ -122,17 +149,18 @@
             }
         }
 
-        // 初期配置：最初からギュウギュウに重ならないよう、最初から綺麗に広げて配置
+        // 初期配置（重なり防止グリッド）
         function initFirstFrame() {
+            if (formations[0].positions.length > 0) return;
             formations[0].positions = [];
-            const cols = 10; // 1列10人ずつの綺麗なブロックを作る
+            const cols = 10;
             for(let i = 0; i < totalCount; i++) {
                 const row = Math.floor(i / cols);
                 const col = i % cols;
                 formations[0].positions.push({
                     memberNumber: i + 1,
-                    x: 180 + col * 70,  // 横に重ならないよう適度に離す
-                    y: 350 + row * 70   // 縦に重ならないよう適度に離す
+                    x: 180 + col * 70,
+                    y: 350 + row * 70
                 });
             }
         }
@@ -165,8 +193,7 @@
         }
 
         function logout() {
-            userRole = null;
-            myMemberNumber = null;
+            userRole = null; myMemberNumber = null;
             document.getElementById('admin-password').value = '';
             document.getElementById('login-screen').style.display = 'flex';
         }
@@ -178,12 +205,16 @@
                 document.getElementById('status-badge').style.backgroundColor = '#2563eb';
                 document.getElementById('admin-controls').style.display = 'flex';
                 document.getElementById('performer-controls').style.display = 'none';
+                document.getElementById('admin-memo-input-wrap').style.display = 'block';
+                document.getElementById('performer-memo-wrap').style.display = 'none';
             } else {
                 document.getElementById('display-mode-title').innerText = '📱 出演者専用マイ画面';
                 document.getElementById('status-badge').innerText = `${myMemberNumber}番 の位置`;
                 document.getElementById('status-badge').style.backgroundColor = '#ea580c';
                 document.getElementById('admin-controls').style.display = 'none';
                 document.getElementById('performer-controls').style.display = 'block';
+                document.getElementById('admin-memo-input-wrap').style.display = 'none';
+                document.getElementById('performer-memo-wrap').style.display = 'block';
             }
             updateUI();
         }
@@ -199,12 +230,12 @@
             canvas.width = size; canvas.height = size;
             ctx.clearRect(0, 0, size, size);
 
-            // ステージ（グレー）
+            // ステージ表示
             ctx.fillStyle = '#cbd5e1'; ctx.fillRect(0, 0, size, size * 0.12);
             ctx.fillStyle = '#475569'; ctx.font = 'bold 22px sans-serif'; ctx.textAlign = 'center';
             ctx.fillText('ステージ（前）', size / 2, size * 0.08);
 
-            // センターライン（点線）
+            // センターライン
             ctx.strokeStyle = '#94a3b8'; ctx.lineWidth = 1; ctx.setLineDash([5, 5]);
             ctx.beginPath(); ctx.moveTo(size / 2, 0); ctx.lineTo(size / 2, size); ctx.stroke();
             ctx.beginPath(); ctx.moveTo(0, size * 0.55); ctx.lineTo(size, size * 0.55); ctx.stroke();
@@ -213,10 +244,10 @@
             const currentForm = formations[currentFrameIndex];
             if (!currentForm) return;
 
-            // 他の人たちを先に描画（自分の丸が一番上に乗るようにする）
+            // 他の人たち
             currentForm.positions.forEach(pos => {
                 const isMe = (userRole === 'performer' && pos.memberNumber === myMemberNumber);
-                if (isMe) return; // 自分の描画は後回し
+                if (isMe) return;
 
                 const drawX = (pos.x / 1000) * size;
                 const drawY = (pos.y / 1000) * size;
@@ -227,61 +258,48 @@
                 ctx.fillStyle = isSelected ? '#ef4444' : '#3b82f6';
                 ctx.strokeStyle = '#ffffff';
                 ctx.lineWidth = 1.5;
-                ctx.fill();
-                ctx.stroke();
+                ctx.fill(); ctx.stroke();
 
-                ctx.fillStyle = '#ffffff';
-                ctx.font = '10px sans-serif';
+                ctx.fillStyle = '#ffffff'; ctx.font = '10px sans-serif';
                 ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
                 ctx.fillText(pos.memberNumber, drawX, drawY);
             });
 
-            // 最後に自分（または選択中の丸）を目立たせて描画
+            // 自分を目立たせる
             if (userRole === 'performer') {
                 const myPos = currentForm.positions.find(p => p.memberNumber === myMemberNumber);
                 if (myPos) {
                     const drawX = (myPos.x / 1000) * size;
                     const drawY = (myPos.y / 1000) * size;
 
-                    // 目立たせるための外光（グローエフェクト）
-                    ctx.shadowColor = '#ea580c';
-                    ctx.shadowBlur = 15;
-
-                    ctx.beginPath();
-                    ctx.arc(drawX, drawY, 16, 0, Math.PI * 2); // 一回り大きく
-                    ctx.fillStyle = '#ea580c'; // 鮮やかなオレンジ
-                    ctx.strokeStyle = '#ffffff';
-                    ctx.lineWidth = 3;
-                    ctx.fill();
-                    ctx.stroke();
-
-                    // シャドウをリセット
+                    ctx.shadowColor = '#ea580c'; ctx.shadowBlur = 15;
+                    ctx.beginPath(); ctx.arc(drawX, drawY, 16, 0, Math.PI * 2);
+                    ctx.fillStyle = '#ea580c'; ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 3;
+                    ctx.fill(); ctx.stroke();
                     ctx.shadowBlur = 0;
 
-                    ctx.fillStyle = '#ffffff';
-                    ctx.font = 'bold 13px sans-serif';
+                    ctx.fillStyle = '#ffffff'; ctx.font = 'bold 13px sans-serif';
                     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
                     ctx.fillText(myPos.memberNumber, drawX, drawY);
                 }
             }
         }
 
-        // 🗺️ 座標変換ロジック
+        // 座標変換とドラッグ
         function getCanvasMousePos(e) {
             const rect = canvas.getBoundingClientRect();
             const clientX = e.touches ? e.touches[0].clientX : e.clientX;
             const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-            
-            const mouseX = ((clientX - rect.left) / rect.width) * 1000;
-            const mouseY = ((clientY - rect.top) / rect.height) * 1000;
-            return { x: mouseX, y: mouseY };
+            return {
+                x: ((clientX - rect.left) / rect.width) * 1000,
+                y: ((clientY - rect.top) / rect.height) * 1000
+            };
         }
 
         function handleStart(e) {
             if (userRole !== 'admin') return;
             const pos = getCanvasMousePos(e);
             const currentForm = formations[currentFrameIndex];
-            // 判定を「45ピクセル」まで拡大して、指でも絶対に掴めるように調整
             const hit = currentForm.positions.find(p => Math.sqrt(Math.pow(p.x - pos.x, 2) + Math.pow(p.y - pos.y, 2)) < 45);
             if (hit) { isDragging = true; draggedNumber = hit.memberNumber; draw(); }
         }
@@ -301,30 +319,77 @@
 
         function handleEnd() { isDragging = false; draggedNumber = null; draw(); }
 
-        canvas.addEventListener('mousedown', handleStart);
-        canvas.addEventListener('mousemove', handleMove);
-        canvas.addEventListener('mouseup', handleEnd);
-        canvas.addEventListener('mouseleave', handleEnd);
+        canvas.addEventListener('mousedown', handleStart); canvas.addEventListener('mousemove', handleMove);
+        canvas.addEventListener('mouseup', handleEnd); canvas.addEventListener('mouseleave', handleEnd);
         canvas.addEventListener('touchstart', handleStart, { passive: false });
         canvas.addEventListener('touchmove', handleMove, { passive: false });
         canvas.addEventListener('touchend', handleEnd);
 
-        // --- テンプレート自動配置 ---
+        // --- 🚀 【超進化】9大テンプレートの自動計算ロジック ---
         window.applyTemplate = function(type) {
             if(userRole !== 'admin') return;
             const currentForm = formations[currentFrameIndex];
             currentForm.positions = [];
+            
             for (let i = 0; i < totalCount; i++) {
                 const num = i + 1;
-                let x = 500, y = 500;
-                if (type === 'line') { x = 150 + (i / (totalCount - 1 || 1)) * 700; y = 550; }
-                else if (type === 'circle') { const angle = (i / totalCount) * 2 * Math.PI; x = 500 + Math.cos(angle) * 320; y = 550 + Math.sin(angle) * 320; }
-                else if (type === 'vShape') { const isLeft = i < totalCount / 2; const step = isLeft ? i : i - Math.floor(totalCount / 2); x = isLeft ? 500 - step * 13 : 500 + step * 13; y = 300 + step * 16; }
+                let x = 500, y = 550;
+                const rate = i / (totalCount - 1 || 1);
+
+                if (type === 'line') {
+                    // 1. 横一列
+                    x = 120 + rate * 760; y = 550;
+                } else if (type === 'vertLine') {
+                    // 2. 縦一列
+                    x = 500; y = 180 + rate * 700;
+                } else if (type === 'circle') {
+                    // 3. 正円
+                    const angle = (i / totalCount) * 2 * Math.PI - Math.PI / 2;
+                    x = 500 + Math.cos(angle) * 300; y = 550 + Math.sin(angle) * 300;
+                } else if (type === 'vShape') {
+                    // 4. V字
+                    const isLeft = i < totalCount / 2;
+                    const step = isLeft ? i : (totalCount - 1 - i);
+                    x = isLeft ? 500 - (totalCount/2 - i)*12 : 500 + (i - totalCount/2)*12;
+                    y = 300 + step * (700 / totalCount * 1.5);
+                } else if (type === 'revVShape') {
+                    // 5. 逆V字
+                    const isLeft = i < totalCount / 2;
+                    const step = isLeft ? i : (totalCount - 1 - i);
+                    x = isLeft ? 500 - (totalCount/2 - i)*12 : 500 + (i - totalCount/2)*12;
+                    y = 850 - step * (700 / totalCount * 1.5);
+                } else if (type === 'block') {
+                    // 6. 2列ブロック
+                    const half = Math.floor(totalCount / 2);
+                    if (i < half) {
+                        x = 150 + (i / (half - 1 || 1)) * 700; y = 450; // 前列
+                    } else {
+                        x = 150 + ((i - half) / (totalCount - half - 1 || 1)) * 700; y = 650; // 後列
+                    }
+                } else if (type === 'xShape') {
+                    // 7. X字
+                    if (i < totalCount / 2) {
+                        const r = i / (totalCount / 2 - 1 || 1);
+                        x = 200 + r * 600; y = 250 + r * 600; // 左上から右下
+                    } else {
+                        const r = (i - totalCount / 2) / (totalCount - totalCount / 2 - 1 || 1);
+                        x = 800 - r * 600; y = 250 + r * 600; // 右上から左下
+                    }
+                } else if (type === 'wave') {
+                    // 8. 波型（S字）
+                    x = 120 + rate * 760;
+                    y = 550 + Math.sin(rate * Math.PI * 2) * 200;
+                } else if (type === 'random') {
+                    // 9. 散らばり（規則的なバラバラ配置で重なりを防止）
+                    x = 150 + (Math.sin(i * 9) * 0.5 + 0.5) * 700;
+                    y = 200 + (Math.cos(i * 7) * 0.5 + 0.5) * 650;
+                }
                 currentForm.positions.push({ memberNumber: num, x, y });
             }
             draw();
         };
 
+        // --- UI更新 ---
         function updateUI() {
             const tl = document.getElementById('timeline-list');
             tl.innerHTML = '';
@@ -346,14 +411,36 @@
                 tl.appendChild(btn);
             });
 
+            const currentForm = formations[currentFrameIndex];
+            
+            // メモの表示更新
             if(userRole === 'admin') {
-                document.getElementById('frame-name-input').value = formations[currentFrameIndex].name;
+                document.getElementById('frame-name-input').value = currentForm.name;
+                document.getElementById('frame-memo-input').value = currentForm.memo || '';
+            } else {
+                const memoText = document.getElementById('performer-memo-text');
+                if (currentForm.memo && currentForm.memo.trim() !== '') {
+                    memoText.innerText = `📝 指示: ${currentForm.memo}`;
+                    memoText.style.backgroundColor = '#fffae6';
+                    memoText.style.color = '#7a5f00';
+                    memoText.style.borderLeft = '4px solid #d97706';
+                } else {
+                    memoText.innerText = '💡 このコマの指示メモはまだありません';
+                    memoText.style.backgroundColor = '#f1f5f9';
+                    memoText.style.color = '#64748b';
+                    memoText.style.borderLeft = '4px solid #cbd5e1';
+                }
             }
             draw();
         }
 
+        // イベント設定
         document.getElementById('frame-name-input').oninput = e => {
             if(userRole === 'admin') { formations[currentFrameIndex].name = e.target.value; updateUI(); }
+        };
+        
+        document.getElementById('frame-memo-input').oninput = e => {
+            if(userRole === 'admin') { formations[currentFrameIndex].memo = e.target.value; }
         };
         
         document.getElementById('add-frame-btn').onclick = () => {
@@ -363,22 +450,8 @@
             formations.push({
                 id: 'f_' + Date.now(),
                 name: `コマ ${newIndex}`,
+                memo: '',
                 positions: currentForm.positions.map(p => ({...p}))
             });
             currentFrameIndex = formations.length - 1;
-            updateUI();
-        };
-
-        document.getElementById('total-count-input').onchange = e => {
-            if(userRole !== 'admin') return;
-            totalCount = Math.max(1, Math.min(150, parseInt(e.target.value) || 70));
-            initFirstFrame();
-            buildLoginDropdown();
-            updateUI();
-        };
-
-        buildLoginDropdown();
-        initFirstFrame();
-    </script>
-</body>
-</html>
+            update
