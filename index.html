@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>ダンスフォーメーション Pro - 共同管理配信版</title>
+    <title>ダンスフォーメーション Pro - リアルタイム自動同期版</title>
     <style>
         * { box-sizing: border-box; font-family: sans-serif; margin: 0; padding: 0; }
         body { background-color: #f1f5f9; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
@@ -22,7 +22,7 @@
         body.fullscreen-mode .content { height: 100vh; width: 100vw; padding: 0; }
         body.fullscreen-mode canvas { border-radius: 0; }
         .exit-fs-btn { position: absolute; top: 15px; right: 15px; background-color: rgba(239, 68, 68, 0.9); color: white; border: none; padding: 10px 16px; border-radius: 8px; font-weight: bold; font-size: 14px; cursor: pointer; display: none; z-index: 9999; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
-        body.fullscreen-mode .exit-fs-btn { block; }
+        body.fullscreen-mode .exit-fs-btn { display: block; }
         .footer { background-color: #ffffff; border-top: 1px solid #cbd5e1; padding: 8px; box-shadow: 0 -2px 10px rgba(0,0,0,0.05); display: flex; flex-direction: column; gap: 4px; z-index: 10; }
         .audio-player-zone { background-color: #f8fafc; border: 1px solid #e2e8f0; padding: 8px; border-radius: 8px; display: flex; flex-direction: column; gap: 4px; }
         .player-row-1 { display: flex; align-items: center; gap: 10px; }
@@ -91,8 +91,8 @@
 
     <div class="top-info-panel">
         <div id="admin-file-io-wrap" class="save-load-row" style="display: none;">
-            <span style="font-weight: bold; color: #a0aec0; font-size: 11px;">💾 データ同期:</span>
-            <button class="header-btn" style="background-color: #10b981;" onclick="exportDataFile()">📥 配信データを生成(コピー)</button>
+            <span style="font-weight: bold; color: #a0aec0; font-size: 11px;">🌐 自動リアルタイム同期:</span>
+            <button id="cloud-sync-btn" class="header-btn" style="background-color: #10b981;" onclick="syncToCloud()">📡 全員に最新の配置を配信</button>
             <div style="display: flex; align-items: center; gap: 4px; margin-left: auto;">
                 <span style="font-size: 11px; color: #cbd5e1;">👤 名前設定:</span>
                 <input type="number" id="name-target-idx" value="1" min="1" style="width:40px; text-align:center;">番＝
@@ -183,15 +183,15 @@
         let userRole = null; let myMemberNumber = null; 
 
         // ==========================================
-        // 📥 🌟【管理者用】ここに最新データを貼り付けます 🌟
+        // 🌐 🌟【重要】ここにステップ1で取得した「ウェブアプリのURL」を貼り付けてください 🌟
         // ==========================================
-        const MASTER_DATABASE = null; 
+        const CLOUD_DATABASE_URL = "https://script.google.com/a/macros/gse.okayama-c.ed.jp/s/AKfycbxynyMVeYcwAMgtf7tLC2zWOKWf7_2ZZ2EZw7uhMWjpeT_xbVFPrTrO9H7ECBPaSg4b/exec";
         // ==========================================
 
-        let totalCount = (MASTER_DATABASE && MASTER_DATABASE.totalCount) ? MASTER_DATABASE.totalCount : 70;
-        let memberColors = (MASTER_DATABASE && MASTER_DATABASE.memberColors) ? MASTER_DATABASE.memberColors : {};
-        let memberNames = (MASTER_DATABASE && MASTER_DATABASE.memberNames) ? MASTER_DATABASE.memberNames : {};
-        let formations = (MASTER_DATABASE && MASTER_DATABASE.formations) ? MASTER_DATABASE.formations : [
+        let totalCount = 70;
+        let memberColors = {};
+        let memberNames = {};
+        let formations = [
             { id: 'f1', name: '① 開幕', memo: '曲の始まりの立ち位置です！', time: 0.0, positions: [] },
             { id: 'f2', name: '② サビ頭', memo: 'サビの立ち位置です！', time: 4.0, positions: [] }
         ];
@@ -210,7 +210,7 @@
             }
         }
         function initFirstFrame() {
-            if(MASTER_DATABASE) return;
+            if(formations[0].positions.length > 0) return;
             formations[0].positions = []; const cols = 10;
             for(let i = 0; i < totalCount; i++) {
                 formations[0].positions.push({ memberNumber: i + 1, x: 180 + (i % cols) * 70, y: 320 + Math.floor(i / cols) * 70 });
@@ -219,6 +219,57 @@
             formations[1].positions = [];
             for(let i = 0; i < totalCount; i++) {
                 const angle = (i / totalCount) * 2 * Math.PI - Math.PI / 2; formations[1].positions.push({ memberNumber: i + 1, x: 500 + Math.cos(angle) * 300, y: 550 + Math.sin(angle) * 300 });
+            }
+        }
+
+        // 🌐 クラウドデータベース（スプレッドシート）から自動ロードする関数
+        async function loadFromCloud() {
+            if (!CLOUD_DATABASE_URL || CLOUD_DATABASE_URL.includes("ここにデプロイ")) {
+                initFirstFrame(); buildLoginDropdown(); updateUI(); return;
+            }
+            try {
+                const res = await fetch(CLOUD_DATABASE_URL);
+                const data = await res.json();
+                if (data && data.status !== "empty" && data.formations) {
+                    totalCount = data.totalCount || 70;
+                    memberColors = data.memberColors || {};
+                    memberNames = data.memberNames || {};
+                    formations = data.formations;
+                } else {
+                    initFirstFrame();
+                }
+            } catch (err) {
+                console.log("スプレッドシート読み込みエラー。初期配置で起動します:", err);
+                initFirstFrame();
+            }
+            buildLoginDropdown(); updateUI();
+        }
+
+        // 📡 スプレッドシートに保存（5人の誰でも実行可能）
+        async function syncToCloud() {
+            if (userRole !== 'admin') return;
+            if (!CLOUD_DATABASE_URL || CLOUD_DATABASE_URL.includes("ここにデプロイ")) {
+                alert("❌ システムエラー: アプリコード内の「CLOUD_DATABASE_URL」が未設定です。初期設定を完了させてください。");
+                return;
+            }
+            const syncBtn = document.getElementById('cloud-sync-btn');
+            syncBtn.innerText = "⏳ 同期通信中..."; syncBtn.style.backgroundColor = "#eab308";
+            
+            const dataToSave = { totalCount, memberColors, memberNames, formations };
+            
+            try {
+                const response = await fetch(CLOUD_DATABASE_URL, {
+                    method: 'POST',
+                    mode: 'no-cors', // ネットワーク制限（CORS）を強制突破するモード
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(dataToSave)
+                });
+                alert("📡 配信完了！\nスプレッドシートへの保存に成功しました。1秒後に出演者全員の画面に自動反映されます！");
+            } catch (err) {
+                alert("❌ 送信ブロック制限エラー:\n学校・企業のネットワーク制限、またはブラウザセキュリティにより、スプレッドシートへの通信が遮断されました。\n\nこのエラーが出た場合は「プランB（LINE転送方式）」への切り替えが必要です。");
+            } finally {
+                syncBtn.innerText = "📡 全員に最新の配置を配信"; syncBtn.style.backgroundColor = "#10b981";
+                draw();
             }
         }
 
@@ -244,22 +295,10 @@
         }
         function changePlaybackSpeed(speed) { currentPlaybackSpeed = speed; audio.playbackRate = speed; document.getElementById('speed-05').classList.remove('active'); document.getElementById('speed-075').classList.remove('active'); document.getElementById('speed-10').classList.remove('active'); if(speed === 0.5) document.getElementById('speed-05').classList.add('active'); if(speed === 0.75) document.getElementById('speed-075').classList.add('active'); if(speed === 1.0) document.getElementById('speed-10').classList.add('active'); }
 
-        function exportDataFile() {
-            if(userRole !== 'admin') return;
-            const dataToSave = { totalCount: totalCount, memberColors: memberColors, memberNames: memberNames, formations: formations };
-            const jsonString = JSON.stringify(dataToSave, null, 2);
-            navigator.clipboard.writeText(jsonString).then(() => {
-                alert('📋 最新データをクリップボードにコピーしました！\nGitHubの「MASTER_DATABASE = 」の後ろに貼り付け（ペースト）して完了してください。');
-            }).catch(() => {
-                const blob = new Blob([jsonString], { type: 'text/plain' });
-                const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `database_paste_text.txt`; document.body.appendChild(a); a.click(); document.body.removeChild(a);
-            });
-        }
-
         function switchLoginTab(type) { document.getElementById('tab-perf').className = type === 'perf' ? 'tab-btn active' : 'tab-btn'; document.getElementById('tab-admin').className = type === 'admin' ? 'tab-btn active' : 'tab-btn'; document.getElementById('form-perf').style.display = type === 'perf' ? 'block' : 'none'; document.getElementById('form-admin').style.display = type === 'admin' ? 'block' : 'none'; }
         function loginAsPerformer() { userRole = 'performer'; myMemberNumber = parseInt(document.getElementById('login-number-select').value); document.getElementById('login-screen').style.display = 'none'; setupAppMode(); }
         function loginAsAdmin() { if(document.getElementById('admin-password').value === ADMIN_PASSWORD) { userRole = 'admin'; myMemberNumber = null; document.getElementById('login-screen').style.display = 'none'; setupAppMode(); } else { alert('パスワードが違います！'); } }
-        function logout() { audio.pause(); stopSyncLoop(); userRole = null; myMemberNumber = null; if(document.body.classList.contains('fullscreen-mode')) toggleFullScreen(); document.getElementById('admin-password').value = ''; document.getElementById('login-screen').style.display = 'flex'; buildLoginDropdown(); }
+        function logout() { audio.pause(); stopSyncLoop(); userRole = null; myMemberNumber = null; if(document.body.classList.contains('fullscreen-mode')) toggleFullScreen(); document.getElementById('admin-password').value = ''; document.getElementById('login-screen').style.display = 'flex'; loadFromCloud(); }
 
         function setupAppMode() {
             const statusBadge = document.getElementById('status-badge');
@@ -391,7 +430,10 @@
         document.getElementById('frame-memo-input').oninput = e => { if(userRole === 'admin') { formations[currentFrameIndex].memo = e.target.value; } };
         document.getElementById('total-count-input').onchange = e => { if(userRole !== 'admin') return; totalCount = Math.max(1, Math.min(150, parseInt(e.target.value) || 70)); initFirstFrame(); buildLoginDropdown(); updateUI(); };
 
-        ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; buildLoginDropdown(); initFirstFrame();
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        
+        // 🚀 初回起動時にスプレッドシートから自動読み込み
+        loadFromCloud();
     </script>
 </body>
 </html>
