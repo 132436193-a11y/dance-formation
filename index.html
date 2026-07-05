@@ -7,9 +7,9 @@
     
     <script>
         // ==========================================================
-        // 🌐 【自動連動設定】通信エラー対策版URL
+        // 🌐 【完全修正版】保存制限なしの確実なURLを設定しました！
         // ==========================================================
-        const BIN_URL = "https://myjson.online/api/quick/6a38443c-8dd8-438b-ba51-7fa64b50cb81";
+        const BIN_URL = "https://jsonbin.org/matutaku/dance-formation";
         // ==========================================================
     </script>
 
@@ -186,12 +186,11 @@
         }
 
         async function loadFromCloudJSON() {
-            if(!BIN_URL || BIN_URL.includes("ここにMyJson")) { initPositions(); buildDropdown(); updateUI(); return; }
+            if(!BIN_URL) { initPositions(); buildDropdown(); updateUI(); return; }
             try {
-                // 読み込み時はそのままでOK
                 const res = await fetch(BIN_URL);
-                const resData = await res.json();
-                const data = resData.data;
+                if (!res.ok) throw new Error();
+                const data = await res.json();
                 if(data && data.formations) {
                     formations = data.formations; memberNames = data.memberNames || {}; memberColors = data.memberColors || {}; totalCount = data.totalCount || 70;
                 } else { initPositions(); }
@@ -201,22 +200,16 @@
 
         async function saveToCloudJSON() {
             if(userRole !== 'admin') return;
-            if(!BIN_URL || BIN_URL.includes("ここにMyJson")) return alert("URLを設定してください");
             const btn = document.getElementById('cloud-sync-btn'); btn.innerText = "⏳ 保存中...";
-            
-            // 🛠️ 通信エラー対策：URLの末尾の「/」の有無を自動調整します
-            let saveUrl = BIN_URL;
-            if(saveUrl.endsWith('/')) { saveUrl = saveUrl.slice(0, -1); }
-
             try {
-                const res = await fetch(saveUrl, {
-                    method: "PUT",
+                const res = await fetch(BIN_URL, {
+                    method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ data: { formations, memberNames, memberColors, totalCount } })
+                    body: JSON.stringify({ formations, memberNames, memberColors, totalCount })
                 });
-                if(res.ok) { alert("📡 クラウド保存・一斉配信が完了しました！スマホ側も自動で更新されます。"); }
+                if(res.ok) { alert("📡 クラウド保存・一斉配信が完了しました！これで全員のスマホに自動で届きます。"); }
                 else { alert("保存に失敗しました。"); }
-            } catch(e) { alert("通信エラーが発生しました。"); }
+            } catch(e) { alert("通信エラーが発生しました。インターネット接続を確認してください。"); }
             finally { btn.innerText = "💾 クラウド配信保存"; draw(); }
         }
 
