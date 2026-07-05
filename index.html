@@ -4,15 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>ダンスフォーメーション</title>
-    
-    <script>
-        // ==========================================================
-        // 🌐 【完全修正版】保存制限なしの確実なURLを設定しました！
-        // ==========================================================
-        const BIN_URL = "https://jsonbin.org/matutaku/dance-formation";
-        // ==========================================================
-    </script>
-
     <style>
         /* === 全体共通スタイル === */
         * { box-sizing: border-box; font-family: 'Helvetica Neue', Arial, sans-serif; margin: 0; padding: 0; user-select: none; }
@@ -72,7 +63,7 @@
 <body class="admin-theme">
 
     <div id="top-banner" class="top-banner">
-        <span>🔒 管理者エディタ画面（パスワード: matutaku）</span>
+        <span>🔒 管理者画面（安全なブラウザ保存モード）</span>
     </div>
 
     <div id="login-screen" class="login-overlay">
@@ -85,6 +76,7 @@
             <div id="form-perf">
                 <select id="login-number-select" class="input-field"></select>
                 <button class="submit-btn" style="background-color: #ea580c;" onclick="loginAsPerformer()">マイ画面を開く</button>
+                <button class="btn" style="width:100%; margin-top:10px; justify-content:center;" onclick="importFromUser()">📥 管理者から貰ったデータを読み込む</button>
             </div>
             <div id="form-admin" style="display: none;">
                 <input type="password" id="admin-password" class="input-field" placeholder="管理用パスワード">
@@ -99,8 +91,9 @@
             <span id="app-title-text">ダンスフォーメーション</span>
         </div>
         <div class="header-actions">
-            <button id="flip-view-btn" class="btn btn-orange" onclick="toggleFlipView()">🪞 視点反転: 客席正面</button>
-            <button id="cloud-sync-btn" class="btn btn-success" onclick="saveToCloudJSON()">💾 クラウド配信保存</button>
+            <button id="flip-view-btn" class="btn btn-orange" onclick="toggleFlipView()">🪞 視点反転</button>
+            <button id="cloud-sync-btn" class="btn btn-success" onclick="saveToLocal()">💾 ブラウザに保存</button>
+            <button id="export-btn" class="btn btn-primary" onclick="exportData()">📤 メンバーへ配布用コード出力</button>
             <button class="btn btn-danger" onclick="logout()">ログアウト</button>
         </div>
     </div>
@@ -117,11 +110,9 @@
             </div>
 
             <div class="sidebar-section">
-                <div class="section-title">🧮 幾何学テンプレート</div>
+                <div class="section-title">🧮 テンプレート</div>
                 <div class="grid-2">
                     <button onclick="applyTemplate('circle_2')" class="btn">🔘 2重円</button>
-                    <button onclick="applyTemplate('circle_3')" class="btn">🌀 3重円</button>
-                    <button onclick="applyTemplate('radial')" class="btn">☀️ 放射線</button>
                     <button onclick="applyTemplate('line')" class="btn">横一列</button>
                 </div>
             </div>
@@ -140,7 +131,7 @@
             <canvas id="stageCanvas"></canvas>
             <div id="surround-panel" class="surround-overlay">
                 <div style="font-weight:bold; color:var(--accent-color);">👥 周辺メンバー</div>
-                <div id="surround-list">読み込み中...</div>
+                <div id="surround-list">データがありません</div>
             </div>
             <div class="memo-overlay">
                 <div class="memo-title" id="memo-header-title">指示メモ</div>
@@ -152,7 +143,7 @@
 
     <div class="bottom-controls">
         <div class="player-row">
-            <button id="play-pause-btn" class="btn btn-primary" onclick="togglePlay()">▶ 再生（簡易）</button>
+            <button id="play-pause-btn" class="btn btn-primary" onclick="togglePlay()">▶ 再生</button>
             <span id="time-display" class="time-display">00:00.000</span>
             <div class="seek-bar-container">
                 <input type="range" id="seek-bar" class="seek-bar" value="0" min="0" max="100" oninput="handleSeekBar(this.value)">
@@ -167,13 +158,12 @@
     </div>
 
     <script>
-        let userRole = 'admin'; let myMemberNumber = 1; let isFlipped = false;
+        let userRole = 'performer'; let myMemberNumber = 1; let isFlipped = false;
         let totalCount = 70; let memberColors = {}; let memberNames = {};
         let formations = [{ id: 'f1', name: 'コマ1', memo: '初期位置', time: 0.0, positions: [] }];
         let currentFrameIndex = 0; let currentTool = 'select';
-        let offsetX = 0; let offsetY = 0; let zoom = 1.0;
         let dragMode = null; let draggedNumber = null; let startPanX = 0; let startPanY = 0; let dragStartPositions = [];
-        let pulseRadius = 0; let timerInterval = null; let fakeCurrentTime = 0;
+        let timerInterval = null; let fakeCurrentTime = 0;
 
         const canvas = document.getElementById('stageCanvas'); const ctx = canvas.getContext('2d');
 
@@ -185,32 +175,50 @@
             }
         }
 
-        async function loadFromCloudJSON() {
-            if(!BIN_URL) { initPositions(); buildDropdown(); updateUI(); return; }
-            try {
-                const res = await fetch(BIN_URL);
-                if (!res.ok) throw new Error();
-                const data = await res.json();
-                if(data && data.formations) {
-                    formations = data.formations; memberNames = data.memberNames || {}; memberColors = data.memberColors || {}; totalCount = data.totalCount || 70;
-                } else { initPositions(); }
-            } catch(e) { initPositions(); }
-            buildDropdown(); setupTheme();
+        // 💾 ローカル保存（エラー絶対起きない）
+        function saveToLocal() {
+            const data = { formations, memberNames, memberColors, totalCount };
+            localStorage.setItem('dance_formation_data', JSON.stringify(data));
+            alert("💾 ブラウザへの保存が完了しました！画面を閉じても消えません。");
         }
 
-        async function saveToCloudJSON() {
-            if(userRole !== 'admin') return;
-            const btn = document.getElementById('cloud-sync-btn'); btn.innerText = "⏳ 保存中...";
-            try {
-                const res = await fetch(BIN_URL, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ formations, memberNames, memberColors, totalCount })
-                });
-                if(res.ok) { alert("📡 クラウド保存・一斉配信が完了しました！これで全員のスマホに自動で届きます。"); }
-                else { alert("保存に失敗しました。"); }
-            } catch(e) { alert("通信エラーが発生しました。インターネット接続を確認してください。"); }
-            finally { btn.innerText = "💾 クラウド配信保存"; draw(); }
+        function loadFromLocal() {
+            const saved = localStorage.getItem('dance_formation_data');
+            if(saved) {
+                try {
+                    const data = JSON.parse(saved);
+                    formations = data.formations || formations;
+                    memberNames = data.memberNames || {};
+                    memberColors = data.memberColors || {};
+                    totalCount = data.totalCount || 70;
+                } catch(e) { initPositions(); }
+            } else {
+                initPositions();
+            }
+            buildDropdown();
+            updateUI();
+        }
+
+        // 📤 メンバーへの配布コードを生成
+        function exportData() {
+            const data = { formations, memberNames, memberColors, totalCount };
+            const base64 = btoa(unescape(encodeURIComponent(JSON.stringify(data))));
+            prompt("📋 配布用コードが生成されました！これを丸ごとコピーして、メンバーのLINE等に貼り付けて送ってください：", base64);
+        }
+
+        // 📥 メンバー側でコードを読み込む
+        function importFromUser() {
+            const code = prompt("📥 管理者から送られてきた長いコード（文字の羅列）をここに貼り付けてください：");
+            if(code) {
+                try {
+                    const decoded = decodeURIComponent(escape(atob(code)));
+                    const data = JSON.parse(decoded);
+                    formations = data.formations; memberNames = data.memberNames || {}; memberColors = data.memberColors || {}; totalCount = data.totalCount || 70;
+                    localStorage.setItem('dance_formation_data', JSON.stringify(data));
+                    alert("📥 データの同期が成功しました！最新の配置が表示されます。");
+                    buildDropdown(); updateUI();
+                } catch(e) { alert("正しいコードではない、またはコピーが途切れている可能性があります。"); }
+            }
         }
 
         function switchLoginTab(type) {
@@ -229,7 +237,8 @@
             document.getElementById('top-banner').style.display = userRole === 'admin' ? 'flex' : 'none';
             document.getElementById('edit-memo-btn').style.display = userRole === 'admin' ? 'block' : 'none';
             document.getElementById('cloud-sync-btn').style.display = userRole === 'admin' ? 'block' : 'none';
-            buildDropdown(); updateUI();
+            document.getElementById('export-btn').style.display = userRole === 'admin' ? 'block' : 'none';
+            updateUI();
         }
 
         function buildDropdown() {
@@ -271,7 +280,7 @@
         function applySingleName() { const idx = parseInt(document.getElementById('name-target-idx').value); const val = document.getElementById('name-target-val').value; if(idx) { memberNames[idx] = val; buildDropdown(); updateUI(); } }
 
         function togglePlay() {
-            if(timerInterval) { clearInterval(timerInterval); timerInterval = null; document.getElementById('play-pause-btn').innerText = '▶ 再生（簡易）'; }
+            if(timerInterval) { clearInterval(timerInterval); timerInterval = null; document.getElementById('play-pause-btn').innerText = '▶ 再生'; }
             else { document.getElementById('play-pause-btn').innerText = '⏸ 停止'; timerInterval = setInterval(() => { fakeCurrentTime += 0.05; if(fakeCurrentTime > formations[formations.length-1].time) fakeCurrentTime = 0; document.getElementById('time-display').innerText = fakeCurrentTime.toFixed(2); document.getElementById('seek-bar').value = (fakeCurrentTime / (formations[formations.length-1].time || 1)) * 100; draw(); }, 50); }
         }
         function handleSeekBar(v) { fakeCurrentTime = (v/100) * (formations[formations.length-1].time || 1); draw(); }
@@ -326,7 +335,7 @@
             updateUI();
         }
 
-        loadFromCloudJSON(); setInterval(() => { pulseRadius = (pulseRadius+1)%20; if(!timerInterval) draw(); }, 60);
+        loadFromLocal(); setInterval(() => { if(!timerInterval) draw(); }, 60);
     </script>
 </body>
 </html>
