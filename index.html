@@ -3,187 +3,248 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>ダンスフォーメーション Pro - リアルタイム自動同期版</title>
+    <title>ダンスフォーメーションアプリ - Next Pro</title>
     <style>
-        * { box-sizing: border-box; font-family: sans-serif; margin: 0; padding: 0; }
-        body { background-color: #f1f5f9; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
-        .header { background-color: #1e293b; color: white; padding: 12px; display: flex; justify-content: space-between; align-items: center; height: 50px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); z-index: 10; }
-        .status-badge { font-size: 13px; font-weight: bold; background-color: #334155; padding: 4px 10px; border-radius: 20px; color: white; }
-        .header-btns { display: flex; gap: 6px; }
-        .header-btn { background-color: #475569; color: white; border: none; padding: 4px 8px; border-radius: 4px; font-size: 12px; cursor: pointer; font-weight: bold; }
-        .logout-btn { background-color: #ef4444; }
-        .top-info-panel { background-color: #1e293b; color: white; padding: 6px 12px; font-size: 13px; display: flex; flex-direction: column; gap: 4px; border-bottom: 1px solid #334155; z-index: 10; max-height: 140px; overflow-y: auto; }
-        .memo-box { background-color: #fffae6; color: #7a5f00; padding: 8px; border-radius: 6px; border-left: 4px solid #d97706; font-weight: bold; font-size: 14px; margin-top: 2px; width: 100%; }
-        .save-load-row { display: flex; gap: 10px; align-items: center; background: #2d3748; padding: 6px; border-radius: 6px; margin-bottom: 2px; flex-wrap: wrap; }
-        .content { flex: 1; background-color: #0f172a; display: flex; justify-content: center; align-items: center; padding: 5px; overflow: hidden; position: relative; }
-        canvas { background-color: white; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.3); max-width: 100%; max-height: 100%; aspect-ratio: 1/1; cursor: grab; touch-action: none; }
+        /* === 全体共通スタイル === */
+        * { box-sizing: border-box; font-family: 'Helvetica Neue', Arial, sans-serif; margin: 0; padding: 0; user-select: none; }
+        body { height: 100vh; display: flex; flex-direction: column; overflow: hidden; transition: background-color 0.3s; }
+        
+        /* 管理者モード（ダーク）と出演者モード（ライト）のカラー変数 */
+        body.admin-theme { --bg-primary: #121212; --bg-secondary: #1e1e1e; --bg-tertiary: #2a2a2a; --text-main: #ffffff; --text-sub: #aaaaaa; --border-color: #333333; --accent-color: #2563eb; --header-bg: #0f2d5c; }
+        body.perf-theme { --bg-primary: #f8fafc; --bg-secondary: #ffffff; --bg-tertiary: #f1f5f9; --text-main: #1e293b; --text-sub: #64748b; --border-color: #cbd5e1; --accent-color: #ea580c; --header-bg: #15803d; }
+
+        body { background-color: var(--bg-primary); color: var(--text-main); }
+
+        /* トップ看板ヘッダー */
+        .top-banner { background: var(--header-bg); color: white; padding: 10px 20px; text-align: center; font-weight: bold; font-size: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.2); z-index: 100; display: flex; justify-content: center; align-items: center; gap: 10px; }
+        
+        /* アプリ内ヘッダー */
+        .app-header { background-color: var(--bg-secondary); border-bottom: 1px solid var(--border-color); padding: 8px 16px; display: flex; justify-content: space-between; align-items: center; height: 50px; z-index: 10; }
+        .app-title { font-size: 16px; font-weight: bold; display: flex; align-items: center; gap: 8px; }
+        .header-actions { display: flex; gap: 6px; align-items: center; }
+        
+        /* ボタン共通スタリイング */
+        .btn { background-color: var(--bg-tertiary); color: var(--text-main); border: 1px solid var(--border-color); padding: 6px 12px; border-radius: 6px; font-size: 12px; font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 4px; transition: all 0.2s; }
+        .btn:hover { opacity: 0.9; background-color: var(--border-color); }
+        .btn-primary { background-color: #2563eb; color: white; border: none; }
+        .btn-success { background-color: #10b981; color: white; border: none; }
+        .btn-danger { background-color: #ef4444; color: white; border: none; }
+        .btn-orange { background-color: #ea580c; color: white; border: none; }
+
+        /* メインコンテンツ配置 */
+        .main-container { flex: 1; display: flex; overflow: hidden; position: relative; }
+        
+        /* 左側サイドバー（管理者用ツール） */
+        .sidebar { width: 240px; background-color: var(--bg-secondary); border-right: 1px solid var(--border-color); padding: 12px; display: flex; flex-direction: column; gap: 14px; overflow-y: auto; }
+        .sidebar-section { display: flex; flex-direction: column; gap: 6px; }
+        .section-title { font-size: 11px; font-weight: bold; color: var(--text-sub); text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid var(--border-color); padding-bottom: 4px; }
+        
+        /* グリッドボタン群 */
+        .btn-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 4px; }
+        .btn-list { display: flex; flex-direction: column; gap: 4px; }
+
+        /* ステージ表示エリア */
+        .stage-area { flex: 1; background-color: #0b0f19; display: flex; justify-content: center; align-items: center; padding: 10px; position: relative; overflow: hidden; }
+        canvas { background-color: #1a1f2c; border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); max-width: 100%; max-height: 100%; aspect-ratio: 4/3; cursor: grab; touch-action: none; }
         canvas:active { cursor: grabbing; }
-        body.fullscreen-mode .header, body.fullscreen-mode .top-info-panel, body.fullscreen-mode .footer { display: none !important; }
-        body.fullscreen-mode .content { height: 100vh; width: 100vw; padding: 0; }
-        body.fullscreen-mode canvas { border-radius: 0; }
-        .exit-fs-btn { position: absolute; top: 15px; right: 15px; background-color: rgba(239, 68, 68, 0.9); color: white; border: none; padding: 10px 16px; border-radius: 8px; font-weight: bold; font-size: 14px; cursor: pointer; display: none; z-index: 9999; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
-        body.fullscreen-mode .exit-fs-btn { display: block; }
-        .footer { background-color: #ffffff; border-top: 1px solid #cbd5e1; padding: 8px; box-shadow: 0 -2px 10px rgba(0,0,0,0.05); display: flex; flex-direction: column; gap: 4px; z-index: 10; }
-        .audio-player-zone { background-color: #f8fafc; border: 1px solid #e2e8f0; padding: 8px; border-radius: 8px; display: flex; flex-direction: column; gap: 4px; }
-        .player-row-1 { display: flex; align-items: center; gap: 10px; }
-        .play-btn { background-color: #2563eb; color: white; border: none; padding: 6px 16px; border-radius: 6px; font-weight: bold; font-size: 13px; cursor: pointer; white-space: nowrap; }
-        .play-btn.playing { background-color: #dc2626; }
-        .time-display { font-family: monospace; font-size: 13px; color: #334155; font-weight: bold; white-space: nowrap; }
-        .seek-bar { flex: 1; height: 8px; cursor: pointer; accent-color: #2563eb; }
-        .timeline { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px; -webkit-overflow-scrolling: touch; }
-        .frame-btn { padding: 6px 10px; font-size: 12px; font-weight: bold; border-radius: 6px; border: 1px solid #cbd5e1; cursor: pointer; white-space: nowrap; transition: all 0.2s; text-align: left; }
-        .frame-time-tag { display: block; font-size: 9px; color: #64748b; font-weight: normal; margin-top: 1px; }
-        .control-grid { display: flex; flex-direction: column; gap: 4px; width: 100%; }
-        .template-scroll { display: flex; gap: 4px; overflow-x: auto; padding: 2px 0; -webkit-overflow-scrolling: touch; width: 100%; }
-        .action-btn { padding: 5px 8px; font-size: 11px; font-weight: bold; background-color: #f1f5f9; color: #334155; border: 1px solid #cbd5e1; border-radius: 6px; cursor: pointer; white-space: nowrap; }
-        .add-btn { background-color: #10b981; color: white; border: none; padding: 5px 12px; font-size: 12px; font-weight: bold; border-radius: 6px; cursor: pointer; }
-        .del-btn { background-color: #ef4444; color: white; border: none; padding: 5px 12px; font-size: 12px; font-weight: bold; border-radius: 6px; cursor: pointer; }
+
+        /* 右上指示メモ */
+        .memo-overlay { position: absolute; top: 15px; right: 15px; width: 220px; background: rgba(0, 0, 0, 0.75); backdrop-filter: blur(4px); border: 1px solid #444; border-radius: 8px; padding: 12px; color: white; z-index: 5; }
+        body.perf-theme .memo-overlay { background: rgba(255, 255, 255, 0.9); border: 1px solid #cbd5e1; color: #1e293b; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        .memo-title { font-size: 11px; font-weight: bold; color: var(--text-sub); margin-bottom: 4px; }
+        .memo-body { font-size: 14px; font-weight: bold; color: #f59e0b; min-height: 40px; white-space: pre-wrap; }
+        body.perf-theme .memo-body { color: #dc2626; }
+
+        /* 下部フッターコントロール */
+        .bottom-controls { background-color: var(--bg-secondary); border-top: 1px solid var(--border-color); padding: 12px 16px; display: flex; flex-direction: column; gap: 10px; z-index: 10; }
+        
+        /* プレイヤー行 */
+        .player-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+        .time-display { font-family: monospace; font-size: 14px; font-weight: bold; color: var(--text-main); }
+        .seek-bar-container { flex: 1; min-width: 150px; display: flex; align-items: center; }
+        .seek-bar { width: 100%; height: 6px; cursor: pointer; accent-color: var(--accent-color); }
+
+        /* タイムライン（サムネイル風） */
+        .timeline-scroll-wrap { position: relative; display: flex; align-items: center; width: 100%; }
+        .timeline-container { display: flex; gap: 10px; overflow-x: auto; width: 100%; padding: 4px 0; -webkit-overflow-scrolling: touch; scroll-behavior: smooth; }
+        .timeline-card { flex: 0 0 110px; background-color: var(--bg-tertiary); border: 2px solid var(--border-color); border-radius: 6px; overflow: hidden; cursor: pointer; transition: all 0.2s; position: relative; text-align: center; padding-bottom: 4px; }
+        .timeline-card.active { border-color: var(--accent-color); box-shadow: 0 0 8px rgba(37,99,235,0.4); }
+        body.perf-theme .timeline-card.active { box-shadow: 0 0 8px rgba(234,88,12,0.4); }
+        .thumb-preview { width: 100%; height: 60px; background-color: #111827; position: relative; display: flex; justify-content: center; align-items: center; border-bottom: 1px solid var(--border-color); }
+        .thumb-dot { position: absolute; width: 3px; height: 3px; border-radius: 50%; background-color: #3b82f6; }
+        .card-time { font-size: 10px; color: var(--text-sub); font-family: monospace; margin-top: 2px; }
+        .card-name { font-size: 11px; font-weight: bold; color: var(--text-main); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 0 4px; }
+        
+        /* ステータスバー */
+        .status-bar { background-color: var(--bg-tertiary); border-top: 1px solid var(--border-color); padding: 4px 16px; display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: var(--text-sub); font-weight: bold; }
+        .status-highlight { color: var(--accent-color); }
+
+        /* ログイン画面 */
         .login-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background-color: #0f172a; display: flex; justify-content: center; align-items: center; z-index: 999; padding: 20px; }
         .login-card { background-color: white; padding: 30px; border-radius: 12px; width: 100%; max-width: 400px; box-shadow: 0 10px 25px rgba(0,0,0,0.3); text-align: center; }
         .login-card h2 { color: #1e293b; margin-bottom: 20px; font-size: 20px; }
         .login-tab { display: flex; margin-bottom: 20px; border-bottom: 2px solid #e2e8f0; }
         .tab-btn { flex: 1; padding: 10px; border: none; background: none; font-weight: bold; color: #64748b; cursor: pointer; }
         .tab-btn.active { color: #2563eb; border-bottom: 2px solid #2563eb; margin-bottom: -2px; }
-        .input-field { width: 100%; padding: 12px; border: 1px solid #cbd5e1; border-radius: 6px; margin-bottom: 15px; font-size: 14px; text-align: center; }
+        .input-field { width: 100%; padding: 12px; border: 1px solid #cbd5e1; border-radius: 6px; margin-bottom: 15px; font-size: 14px; text-align: center; color: #1e293b; background: white; }
         .submit-btn { width: 100%; padding: 12px; background-color: #2563eb; color: white; border: none; border-radius: 6px; font-weight: bold; font-size: 14px; cursor: pointer; }
-        select, input[type="text"], input[type="number"] { padding: 4px; border-radius: 6px; border: 1px solid #cbd5e1; font-size: 12px; }
-        textarea { width: 100%; height: 38px; padding: 6px; border-radius: 6px; border: 1px solid #cbd5e1; font-size: 12px; resize: none; color: #334155; background-color: white; }
-        .audio-file-input { font-size: 11px; color: #475569; max-width: 140px; }
-        .speed-btn { padding: 2px 6px; font-size: 11px; border: 1px solid #cbd5e1; background: white; border-radius: 4px; cursor: pointer; font-weight: bold; }
-        .speed-btn.active { background-color: #2563eb; color: white; border-color: #2563eb; }
+        
+        /* セレクト・インプット微調整 */
+        select, input[type="text"], input[type="number"] { background: var(--bg-tertiary); color: var(--text-main); border: 1px solid var(--border-color); padding: 4px; border-radius: 4px; font-size: 12px; }
+        
+        /* スマホ用大画面モード */
+        body.fullscreen-mode .top-banner, body.fullscreen-mode .app-header, body.fullscreen-mode .sidebar { display: none !important; }
+        body.fullscreen-mode .stage-area { height: 100vh; width: 100vw; padding: 0; }
+        body.fullscreen-mode canvas { border-radius: 0; width: 100vw; height: 100vh; }
+        .exit-fs-btn { position: absolute; top: 15px; left: 15px; z-index: 9999; display: none; }
+        body.fullscreen-mode .exit-fs-btn { display: block; }
     </style>
 </head>
-<body>
+<body class="admin-theme">
 
-    <button class="exit-fs-btn" onclick="toggleFullScreen()">🖥️ 大画面を終了する</button>
+    <div id="top-banner" class="top-banner">
+        <span>🔒 管理者エディタ画面（パスワード: matutaku）</span>
+        <span style="font-size:12px; font-weight:normal; opacity:0.8;">すべての編集・設定・保存などの機能が利用可能</span>
+    </div>
 
     <div id="login-screen" class="login-overlay">
         <div class="login-card">
-            <h2>🕺 ダンスフォーメーション Pro</h2>
+            <h2>🕺 ダンスフォーメーションアプリ</h2>
             <div class="login-tab">
                 <button id="tab-perf" class="tab-btn active" onclick="switchLoginTab('perf')">📱 出演者ログイン</button>
                 <button id="tab-admin" class="tab-btn" onclick="switchLoginTab('admin')">🛠️ 管理者ログイン</button>
             </div>
             <div id="form-perf">
-                <p style="font-size: 13px; color: #64748b; margin-bottom: 15px;">あなたの番号または名前を選択してください</p>
+                <p style="font-size: 13px; color: #64748b; margin-bottom: 15px;">自分の番号を選択してください</p>
                 <select id="login-number-select" class="input-field"></select>
-                <button class="submit-btn" style="background-color: #ea580c;" onclick="loginAsPerformer()">出演者としてログイン</button>
+                <button class="submit-btn" style="background-color: #ea580c;" onclick="loginAsPerformer()">出演者マイ画面へ</button>
             </div>
             <div id="form-admin" style="display: none;">
                 <p style="font-size: 13px; color: #64748b; margin-bottom: 15px;">管理用パスワードを入力してください</p>
-                <input type="password" id="admin-password" class="input-field" placeholder="パスワードを入力してください">
+                <input type="password" id="admin-password" class="input-field" placeholder="パスワードを入力">
                 <button class="submit-btn" onclick="loginAsAdmin()">管理者としてログイン</button>
             </div>
         </div>
     </div>
 
-    <div class="header">
-        <span id="display-mode-title" style="font-weight: bold; font-size: 14px;">読み込み中...</span>
-        <div style="display: flex; align-items: center; gap: 8px;">
-            <span id="status-badge" class="status-badge">----</span>
-            <div class="header-btns">
-                <button class="header-btn" onclick="toggleFullScreen()">🖥️ 大画面</button>
-                <button class="header-btn" onclick="resetZoom()">🔍 位置リセット</button>
-                <button class="header-btn logout-btn" onclick="logout()">ログアウト</button>
-            </div>
+    <div class="app-header">
+        <div class="app-title">
+            <span id="app-logo-icon">🌐</span>
+            <span id="app-title-text">ダンスフォーメーションアプリ</span>
+        </div>
+        <div class="header-actions">
+            <button id="cloud-sync-btn" class="btn btn-success" onclick="syncToCloud()">💾 クラウド配信保存</button>
+            <button class="btn" onclick="toggleFullScreen()">🖥️ 大画面モード</button>
+            <button class="btn btn-danger" onclick="logout()">ログアウト</button>
         </div>
     </div>
 
-    <div class="top-info-panel">
-        <div id="admin-file-io-wrap" class="save-load-row" style="display: none;">
-            <span style="font-weight: bold; color: #a0aec0; font-size: 11px;">🌐 自動リアルタイム同期:</span>
-            <button id="cloud-sync-btn" class="header-btn" style="background-color: #10b981;" onclick="syncToCloud()">📡 全員に最新の配置を配信</button>
-            <div style="display: flex; align-items: center; gap: 4px; margin-left: auto;">
-                <span style="font-size: 11px; color: #cbd5e1;">👤 名前設定:</span>
-                <input type="number" id="name-target-idx" value="1" min="1" style="width:40px; text-align:center;">番＝
-                <input type="text" id="name-target-val" placeholder="名前" style="width:70px;">
-                <button class="action-btn" onclick="applySingleName()">登録</button>
-            </div>
-        </div>
-        <div id="admin-memo-input-wrap" style="display: none;">
-            <span style="font-weight: bold; color: #cbd5e1;">📝 このコマの指示メモ:</span>
-            <textarea id="frame-memo-input" placeholder="指示を入力"></textarea>
-        </div>
-        <div id="performer-memo-wrap" style="display: none;">
-            <div class="memo-box" id="performer-memo-text">💡 指示はまだありません</div>
-        </div>
-    </div>
-
-    <div class="content">
-        <canvas id="stageCanvas"></canvas>
-    </div>
-
-    <div class="footer">
-        <div class="audio-player-zone">
-            <div class="player-row-1">
-                <button id="play-pause-btn" class="play-btn" onclick="togglePlay()">▶️ 再生</button>
-                <span id="time-display" class="time-display">00:00 / 00:00</span>
-                <input type="range" id="seek-bar" class="seek-bar" value="0" min="0" max="100" step="0.1" oninput="handleSeekBar(this.value)">
-            </div>
-            <div id="audio-file-picker-row" style="display: flex; align-items: center; justify-content: space-between; gap: 4px; flex-wrap: wrap;">
-                <div style="display: flex; align-items: center; gap: 6px;">
-                    <span style="font-size: 11px; font-weight: bold; color: #475569;">🎵 練習曲:</span>
-                    <input type="file" id="audio-file-input" class="audio-file-input" accept="audio/*" onchange="loadAudioFile(this)">
-                </div>
-                <div style="display: flex; align-items: center; gap: 3px;">
-                    <span style="font-size: 11px; font-weight: bold; color: #475569;">🐢 速度:</span>
-                    <button id="speed-05" class="speed-btn" onclick="changePlaybackSpeed(0.5)">0.5x</button>
-                    <button id="speed-075" class="speed-btn" onclick="changePlaybackSpeed(0.75)">0.75x</button>
-                    <button id="speed-10" class="speed-btn active" onclick="changePlaybackSpeed(1.0)">1.0x</button>
-                </div>
-                <button id="audio-mark-btn" class="action-btn" style="background-color: #ea580c; color: white; display: none; font-size: 11px; padding: 4px 6px;" onclick="markCurrentTime()">⏱️ 秒数を記憶</button>
-            </div>
-        </div>
-
-        <div id="timeline-list" class="timeline"></div>
+    <div class="main-container">
         
-        <div class="control-grid">
-            <div id="admin-controls" style="display: none; flex-direction: column; gap: 4px; width: 100%;">
-                <div class="admin-row-1" style="display: flex; align-items: center; gap: 4px; font-size: 11px; flex-wrap: wrap;">
-                    <span>コマ名:</span> <input type="text" id="frame-name-input" style="width: 65px;">
-                    <span>秒数:</span> <input type="number" id="frame-time-input" value="0.0" step="0.1" min="0" style="width: 50px; text-align: center;">秒
-                    <button id="add-frame-btn" class="add-btn" onclick="addNewFrame()">➕ コマ追加</button>
-                    <button id="del-frame-btn" class="del-btn" onclick="deleteCurrentFrame()">❌ コマ削除</button>
-                    <span style="margin-left: 5px;">人数:</span> <input type="number" id="total-count-input" value="70" style="width: 35px;">人
-                </div>
-                <div style="font-size: 11px; display: flex; align-items: center; gap: 4px; background: #f1f5f9; padding: 3px; border-radius: 4px;">
-                    <span style="font-weight: bold; color: #475569;">🎨 色分け:</span>
-                    <span>1番〜</span><input type="number" id="color-end-input" value="10" style="width:35px; text-align:center;">番を
-                    <select id="color-select" style="padding: 2px;">
-                        <option value="#3b82f6">🔵 青</option>
-                        <option value="#10b981">🟢 緑</option>
-                        <option value="#a855f7">🟣 紫</option>
-                        <option value="#eab308">🟡 黄</option>
-                        <option value="#ec4899">💗 ピンク</option>
-                    </select>
-                    <button class="action-btn" style="padding:2px 6px;" onclick="applyGroupColor()">適用</button>
-                </div>
-                <div class="template-scroll">
-                    <button onclick="applyTemplate('line')" class="action-btn">↔️ 横一列</button>
-                    <button onclick="applyTemplate('vertLine')" class="action-btn">↕️ 縦一列</button>
-                    <button onclick="applyTemplate('circle')" class="action-btn">⭕ 正円</button>
-                    <button onclick="applyTemplate('vShape')" class="action-btn">🔼 V字</button>
-                    <button onclick="applyTemplate('revVShape')" class="action-btn">🔽 逆V字</button>
-                    <button onclick="applyTemplate('block')" class="action-btn">⬛ 2列</button>
-                    <button onclick="applyTemplate('xShape')" class="action-btn">✖️ X字</button>
-                    <button onclick="applyTemplate('wave')" class="action-btn">〰️ 波型</button>
-                    <button onclick="applyTemplate('random')" class="action-btn">🎲 散らばり</button>
+        <div id="sidebar" class="sidebar">
+            <div class="sidebar-section">
+                <div class="section-title">編集ツール</div>
+                <div class="btn-list">
+                    <button id="tool-select" class="btn btn-primary" onclick="setTool('select')">⬈ 選択（移動）</button>
+                    <button id="tool-box" class="btn" onclick="setTool('box')">🔲 範囲選択</button>
+                    <button class="btn" onclick="addNewFrame()">＋ コマ追加</button>
+                    <button class="btn btn-danger" onclick="deleteCurrentFrame()">× コマ削除</button>
                 </div>
             </div>
-            <div id="performer-controls" style="display: none; font-size: 11px; color: #475569; text-align: center; padding: 2px;">
-                💡 画面内を2本指ピンチやホイール操作で拡大・縮小・移動できます！
+
+            <div class="sidebar-section">
+                <div class="section-title">グループ一括色分け</div>
+                <div class="btn-list">
+                    <button class="btn" style="border-left: 5px solid #3b82f6;" onclick="applyGroupColor(1, 10, '#3b82f6')">🔵 1～10番</button>
+                    <button class="btn" style="border-left: 5px solid #10b981;" onclick="applyGroupColor(11, 25, '#10b981')">🟢 11～25番</button>
+                    <button class="btn" style="border-left: 5px solid #a855f7;" onclick="applyGroupColor(26, 40, '#a855f7')">🟣 26～40番</button>
+                    <button class="btn" style="border-left: 5px solid #eab308;" onclick="applyGroupColor(41, 55, '#eab308')">🟡 41～55番</button>
+                    <button class="btn" style="border-left: 5px solid #ec4899;" onclick="applyGroupColor(56, 70, '#ec4899')">💗 56～70番</button>
+                    <button class="btn" onclick="resetAllColors()">🎨 色をリセット</button>
+                </div>
+            </div>
+
+            <div class="sidebar-section">
+                <div class="section-title">テンプレート配置 (70人)</div>
+                <div class="btn-list">
+                    <button onclick="applyTemplate('line')" class="btn">① 横一列</button>
+                    <button onclick="applyTemplate('vertLine')" class="btn">② 縦一列</button>
+                    <button onclick="applyTemplate('block')" class="btn">③ 正方形（格子）</button>
+                    <button onclick="applyTemplate('rect')" class="btn">④ 長方形</button>
+                    <button onclick="applyTemplate('circle')" class="btn">⑤ 円形（ドーナツ）</button>
+                    <button onclick="applyTemplate('vShape')" class="btn">⑦ V字型</button>
+                    <button onclick="applyTemplate('triangle')" class="btn">⑧ 三角形</button>
+                    <button onclick="applyTemplate('diamond')" class="btn">⑨ ダイヤモンド</button>
+                </div>
+            </div>
+
+            <div class="sidebar-section" id="admin-name-setter">
+                <div class="section-title">名前個別設定</div>
+                <div style="display:flex; flex-direction:column; gap:4px;">
+                    <div style="display:flex; gap:2px; align-items:center;">
+                        <input type="number" id="name-target-idx" value="1" min="1" max="150" style="width:50px;">番:
+                        <input type="text" id="name-target-val" placeholder="名前入力" style="flex:1; min-width:0;">
+                    </div>
+                    <button class="btn" onclick="applySingleName()">名前を登録</button>
+                </div>
             </div>
         </div>
+
+        <div class="stage-area">
+            <button class="btn btn-danger exit-fs-btn" onclick="toggleFullScreen()">🖥️ 大画面モードを終了</button>
+            
+            <canvas id="stageCanvas"></canvas>
+
+            <div class="memo-overlay">
+                <div class="memo-title" id="memo-header-title">指示メモ</div>
+                <div id="memo-body-text" class="memo-body">イントロ：サビ前ダッシュ！</div>
+                <button id="edit-memo-btn" class="btn" style="width:100%; margin-top:8px; justify-content:center; padding:2px;" onclick="promptEditMemo()">メモを編集</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="bottom-controls">
+        <div class="player-row">
+            <div style="display:flex; align-items:center; gap:4px;">
+                <span style="font-size:12px; font-weight:bold;">🎵 音楽:</span>
+                <input type="file" id="audio-file-input" accept="audio/*" onchange="loadAudioFile(this)" style="max-width:150px;">
+            </div>
+            <button id="play-pause-btn" class="btn btn-primary" onclick="togglePlay()">▶ 再生</button>
+            <span id="time-display" class="time-display">00:00.000 / 00:00.000</span>
+            
+            <div class="seek-bar-container">
+                <input type="range" id="seek-bar" class="seek-bar" value="0" min="0" max="100" step="0.05" oninput="handleSeekBar(this.value)">
+            </div>
+
+            <div style="display:flex; gap:2px;">
+                <button id="speed-05" class="btn" onclick="changePlaybackSpeed(0.5)">0.5x</button>
+                <button id="speed-075" class="btn" onclick="changePlaybackSpeed(0.75)">0.75x</button>
+                <button id="speed-10" class="btn btn-primary" onclick="changePlaybackSpeed(1.0)">1.0x</button>
+            </div>
+            
+            <button id="audio-mark-btn" class="btn btn-orange" onclick="markCurrentTime()">⏱ この位置でコマを記録</button>
+        </div>
+
+        <div class="timeline-scroll-wrap">
+            <div id="timeline-container" class="timeline-container">
+                </div>
+        </div>
+    </div>
+
+    <div class="status-bar">
+        <div>総人数: <span id="status-total" class="status-highlight">70人</span> <span id="status-selected-info"></span></div>
+        <div>現在のコマ: <span id="status-frame" class="status-highlight">コマ1</span> ⏱ 時間: <span id="status-time" class="status-highlight">01:23.456</span></div>
     </div>
 
     <audio id="main-audio" style="display: none;"></audio>
 
     <script>
         const ADMIN_PASSWORD = 'matutaku'; 
-        let userRole = null; let myMemberNumber = null; 
+        let userRole = 'admin'; 
+        let myMemberNumber = 28; // デモ初期値として画像に合わせ28番
 
         // ==========================================
-        // 🌐 🌟【重要】ここにステップ1で取得した「ウェブアプリのURL」を貼り付けてください 🌟
+        // 🌐 🌟【重要】ここに取得した「ウェブアプリのURL」を貼り付けてください 🌟
         // ==========================================
         const CLOUD_DATABASE_URL = "https://script.google.com/a/macros/gse.okayama-c.ed.jp/s/AKfycbxynyMVeYcwAMgtf7tLC2zWOKWf7_2ZZ2EZw7uhMWjpeT_xbVFPrTrO9H7ECBPaSg4b/exec";
         // ==========================================
@@ -192,40 +253,146 @@
         let memberColors = {};
         let memberNames = {};
         let formations = [
-            { id: 'f1', name: '① 開幕', memo: '曲の始まりの立ち位置です！', time: 0.0, positions: [] },
-            { id: 'f2', name: '② サビ頭', memo: 'サビの立ち位置です！', time: 4.0, positions: [] }
+            { id: 'f1', name: 'コマ1', memo: 'イントロ：\nサビ前ダッシュ！', time: 0.0, positions: [] },
+            { id: 'f2', name: 'コマ2', memo: 'Aメロ：\n横列展開', time: 15.23, positions: [] },
+            { id: 'f3', name: 'コマ3', memo: 'Bメロ：\nサークルに移行', time: 32.50, positions: [] },
+            { id: 'f4', name: 'コマ4', memo: 'サビ頭：\nV字でアピール！', time: 47.80, positions: [] },
+            { id: 'f5', name: 'コマ5', memo: '間奏：\nグリッドブロック', time: 64.12, positions: [] },
+            { id: 'f6', name: 'コマ6', memo: '大サビ：\n全員でキメ！', time: 83.45, positions: [] }
         ];
 
-        let currentFrameIndex = 0; let currentPlaybackSpeed = 1.0;
-        const audio = document.getElementById('main-audio'); let isAudioLoaded = false; let animationFrameId = null;
-        let zoom = 1.0; let offsetX = 0; let offsetY = 0; let isPanning = false; let startPanX = 0, startPanY = 0; let lastTouchDist = 0;
-        let isSelecting = false; let selectStart = {x:0, y:0}; let selectEnd = {x:0, y:0}; let selectedNumbers = []; let dragStartPositions = []; let draggedNumber = null;
+        let currentFrameIndex = 0;
+        let currentPlaybackSpeed = 1.0;
+        let currentTool = 'select'; // 'select' or 'box'
+        
+        const audio = document.getElementById('main-audio');
+        let isAudioLoaded = false;
+        let animationFrameId = null;
 
-        function buildLoginDropdown() {
-            const select = document.getElementById('login-number-select'); if(!select) return; select.innerHTML = '';
+        // カメラ（ズーム・パン）操作
+        let zoom = 1.0; let offsetX = 0; let offsetY = 0;
+        let isPanning = false; let startPanX = 0, startPanY = 0;
+
+        // 範囲選択・ドラッグ用
+        let isSelecting = false;
+        let selectStart = {x:0, y:0, canvasX:0, canvasY:0};
+        let selectEnd = {x:0, y:0, canvasX:0, canvasY:0};
+        let selectedNumbers = [];
+        let dragStartPositions = [];
+        let draggedNumber = null;
+        let dragMode = null; // 'move_member', 'select_box', 'pan'
+
+        // パルス（光る）アニメーション用
+        let pulsePulseRadius = 0;
+
+        const canvas = document.getElementById('stageCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // 初期のダミー位置を70人分きれいに並べる
+        function initInitialPositions() {
+            formations.forEach((form, fIdx) => {
+                if(form.positions.length > 0) return;
+                form.positions = [];
+                // 各コマごとにちょっと違う初期配置にしてデザインを再現しやすくする
+                for(let i = 0; i < totalCount; i++) {
+                    let x = 150 + (i % 10) * 70;
+                    let y = 250 + Math.floor(i / 10) * 65;
+                    
+                    if(fIdx === 2) { // コマ3はサークル風
+                        const angle = (i / totalCount) * 2 * Math.PI;
+                        x = 500 + Math.cos(angle) * 260;
+                        y = 500 + Math.sin(angle) * 220;
+                    } else if(fIdx === 3) { // コマ4はV字風
+                        const isLeft = i < totalCount / 2;
+                        const step = isLeft ? i : (totalCount - 1 - i);
+                        x = isLeft ? 500 - (totalCount/2 - i)*11 : 500 + (i - totalCount/2)*11;
+                        y = 250 + step * 10;
+                    }
+                    form.positions.push({ memberNumber: i + 1, x, y });
+                }
+            });
+
+            // デフォルトの色分け（画像通りにマッピング）
             for(let i = 1; i <= totalCount; i++) {
-                const opt = document.createElement('option'); opt.value = i;
-                const displayName = memberNames[i] ? `${i}番 (${memberNames[i]})` : `${i} 番`;
-                opt.innerText = displayName; select.appendChild(opt);
-            }
-        }
-        function initFirstFrame() {
-            if(formations[0].positions.length > 0) return;
-            formations[0].positions = []; const cols = 10;
-            for(let i = 0; i < totalCount; i++) {
-                formations[0].positions.push({ memberNumber: i + 1, x: 180 + (i % cols) * 70, y: 320 + Math.floor(i / cols) * 70 });
-                if(!memberColors[i+1]) memberColors[i+1] = '#3b82f6';
-            }
-            formations[1].positions = [];
-            for(let i = 0; i < totalCount; i++) {
-                const angle = (i / totalCount) * 2 * Math.PI - Math.PI / 2; formations[1].positions.push({ memberNumber: i + 1, x: 500 + Math.cos(angle) * 300, y: 550 + Math.sin(angle) * 300 });
+                if(i <= 10) memberColors[i] = '#1e3a8a';
+                else if(i <= 25) memberColors[i] = '#16a34a';
+                else if(i <= 40) memberColors[i] = '#7c3aed';
+                else if(i <= 55) memberColors[i] = '#ca8a04';
+                else memberColors[i] = '#db2777';
             }
         }
 
-        // 🌐 クラウドデータベース（スプレッドシート）から自動ロードする関数
+        // ログイン画面のトグル
+        function switchLoginTab(type) {
+            document.getElementById('tab-perf').className = type === 'perf' ? 'tab-btn active' : 'tab-btn';
+            document.getElementById('tab-admin').className = type === 'admin' ? 'tab-btn active' : 'tab-btn';
+            document.getElementById('form-perf').style.display = type === 'perf' ? 'block' : 'none';
+            document.getElementById('form-admin').style.display = type === 'admin' ? 'block' : 'none';
+        }
+
+        function loginAsPerformer() {
+            userRole = 'performer';
+            myMemberNumber = parseInt(document.getElementById('login-number-select').value);
+            document.getElementById('login-screen').style.display = 'none';
+            setupTheme();
+        }
+
+        function loginAsAdmin() {
+            if(document.getElementById('admin-password').value === ADMIN_PASSWORD) {
+                userRole = 'admin';
+                myMemberNumber = null;
+                document.getElementById('login-screen').style.display = 'none';
+                setupTheme();
+            } else {
+                alert('パスワードが違います！');
+            }
+        }
+
+        function logout() {
+            audio.pause();
+            document.getElementById('login-screen').style.display = 'flex';
+        }
+
+        // モード別のUIテーマ設定変更
+        function setupTheme() {
+            const body = document.body;
+            const topBanner = document.getElementById('top-banner');
+            if (userRole === 'admin') {
+                body.className = 'admin-theme';
+                topBanner.style.display = 'flex';
+                topBanner.innerHTML = `<span>🔒 管理者エディタ画面 (パスワード: matutaku)</span><span style="font-size:12px; font-weight:normal; opacity:0.8; margin-left:10px;">すべての編集・設定・保存などの機能が利用可能</span>`;
+                document.getElementById('sidebar').style.display = 'flex';
+                document.getElementById('edit-memo-btn').style.display = 'block';
+                document.getElementById('admin-name-setter').style.display = 'block';
+                document.getElementById('audio-mark-btn').style.display = 'block';
+                document.getElementById('app-logo-icon').innerText = "🛠️";
+                document.getElementById('app-title-text').innerText = "ダンスフォーメーションアプリ (管理者モード)";
+            } else {
+                body.className = 'perf-theme';
+                topBanner.style.display = 'flex';
+                topBanner.innerHTML = `<span>👤 出演者マイ画面 (自分の番号を選択)</span><span style="font-size:12px; font-weight:normal; opacity:0.8; margin-left:10px;">自分の番号がオレンジ色で大きくピカピカ光り、動きを確認できます</span>`;
+                document.getElementById('sidebar').style.display = 'none';
+                document.getElementById('edit-memo-btn').style.display = 'none';
+                document.getElementById('admin-name-setter').style.display = 'none';
+                document.getElementById('audio-mark-btn').style.display = 'none';
+                document.getElementById('app-logo-icon').innerText = "📱";
+                document.getElementById('app-title-text').innerText = `出演者マイ画面: ${myMemberNumber}番`;
+            }
+            selectedNumbers = [];
+            updateUI();
+        }
+
+        // ツール切り替え
+        function setTool(tool) {
+            currentTool = tool;
+            document.getElementById('tool-select').className = tool === 'select' ? 'btn btn-primary' : 'btn';
+            document.getElementById('tool-box').className = tool === 'box' ? 'btn btn-primary' : 'btn';
+        }
+
+        // クラウドデータベース自動読み込み
         async function loadFromCloud() {
             if (!CLOUD_DATABASE_URL || CLOUD_DATABASE_URL.includes("ここにデプロイ")) {
-                initFirstFrame(); buildLoginDropdown(); updateUI(); return;
+                initInitialPositions(); buildLoginDropdown(); updateUI(); return;
             }
             try {
                 const res = await fetch(CLOUD_DATABASE_URL);
@@ -236,204 +403,589 @@
                     memberNames = data.memberNames || {};
                     formations = data.formations;
                 } else {
-                    initFirstFrame();
+                    initInitialPositions();
                 }
             } catch (err) {
-                console.log("スプレッドシート読み込みエラー。初期配置で起動します:", err);
-                initFirstFrame();
+                console.log("クラウドロード失敗。ローカルデータで起動:", err);
+                initInitialPositions();
             }
             buildLoginDropdown(); updateUI();
         }
 
-        // 📡 スプレッドシートに保存（5人の誰でも実行可能）
+        // クラウドデータベース保存配信
         async function syncToCloud() {
             if (userRole !== 'admin') return;
             if (!CLOUD_DATABASE_URL || CLOUD_DATABASE_URL.includes("ここにデプロイ")) {
-                alert("❌ システムエラー: アプリコード内の「CLOUD_DATABASE_URL」が未設定です。初期設定を完了させてください。");
+                alert("❌ エラー: スプレッドシート（GAS）のURLが正しく設定されていません。コードの141行目付近を確認してください。");
                 return;
             }
-            const syncBtn = document.getElementById('cloud-sync-btn');
-            syncBtn.innerText = "⏳ 同期通信中..."; syncBtn.style.backgroundColor = "#eab308";
+            const btn = document.getElementById('cloud-sync-btn');
+            btn.innerText = "⏳ 保存配信中...";
             
             const dataToSave = { totalCount, memberColors, memberNames, formations };
-            
             try {
-                const response = await fetch(CLOUD_DATABASE_URL, {
+                await fetch(CLOUD_DATABASE_URL, {
                     method: 'POST',
-                    mode: 'no-cors', // ネットワーク制限（CORS）を強制突破するモード
+                    mode: 'no-cors',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(dataToSave)
                 });
-                alert("📡 配信完了！\nスプレッドシートへの保存に成功しました。1秒後に出演者全員の画面に自動反映されます！");
+                alert("📡 配信・保存が完了しました！\n他の管理者や出演者全員の画面に即座に同期・自動反映されます。");
             } catch (err) {
-                alert("❌ 送信ブロック制限エラー:\n学校・企業のネットワーク制限、またはブラウザセキュリティにより、スプレッドシートへの通信が遮断されました。\n\nこのエラーが出た場合は「プランB（LINE転送方式）」への切り替えが必要です。");
+                alert("❌ 通信ブロック制限エラーが発生しました。\n学校・組織のセキュリティー制限により弾かれた可能性があります。");
             } finally {
-                syncBtn.innerText = "📡 全員に最新の配置を配信"; syncBtn.style.backgroundColor = "#10b981";
+                btn.innerText = "💾 クラウド配信保存";
                 draw();
             }
         }
 
+        function buildLoginDropdown() {
+            const select = document.getElementById('login-number-select');
+            select.innerHTML = '';
+            for(let i = 1; i <= totalCount; i++) {
+                const opt = document.createElement('option');
+                opt.value = i;
+                opt.innerText = memberNames[i] ? `${i}番 (${memberNames[i]})` : `${i}番`;
+                select.appendChild(opt);
+            }
+        }
+
+        // UI表示のアップデート
+        function updateUI() {
+            const currentForm = formations[currentFrameIndex];
+            if(!currentForm) return;
+
+            // 指示メモ反映
+            document.getElementById('memo-header-title').innerText = `指示メモ (${currentForm.name})`;
+            document.getElementById('memo-body-text').innerText = currentForm.memo || '指示は登録されていません。';
+
+            // ステータスバー
+            document.getElementById('status-frame').innerText = currentForm.name;
+            document.getElementById('status-time').innerText = formatTimeFull(currentForm.time);
+            if (selectedNumbers.length > 0 && userRole === 'admin') {
+                document.getElementById('status-selected-info').innerText = `(選択中: ${selectedNumbers.length}人)`;
+            } else {
+                document.getElementById('status-selected-info').innerText = '';
+            }
+
+            // タイムラインカードの動的生成
+            const container = document.getElementById('timeline-container');
+            container.innerHTML = '';
+            formations.forEach((form, idx) => {
+                const card = document.createElement('div');
+                card.className = `timeline-card ${idx === currentFrameIndex ? 'active' : ''}`;
+                card.onclick = () => {
+                    currentFrameIndex = idx;
+                    if(isAudioLoaded) audio.currentTime = form.time;
+                    selectedNumbers = [];
+                    updateUI();
+                };
+
+                // サムネイルのミニチュアプレビュー描画をエミュレート
+                const thumb = document.createElement('div');
+                thumb.className = 'thumb-preview';
+                
+                // ミニドットを数個散りばめて3Dステージのミニチュア風にする
+                const dotCount = Math.min(15, form.positions.length);
+                for(let d=0; d<dotCount; d++) {
+                    const p = form.positions[d*2 || 0];
+                    if(p) {
+                        const dot = document.createElement('div');
+                        dot.className = 'thumb-dot';
+                        dot.style.left = `${(p.x/1000)*100}%`;
+                        dot.style.top = `${(p.y/1000)*100}%`;
+                        if(memberColors[p.memberNumber]) dot.style.backgroundColor = memberColors[p.memberNumber];
+                        thumb.appendChild(dot);
+                    }
+                }
+
+                const timeStr = document.createElement('div');
+                timeStr.className = 'card-time';
+                timeStr.innerText = formatTimeFull(form.time);
+
+                const nameStr = document.createElement('div');
+                nameStr.className = 'card-name';
+                nameStr.innerText = form.name;
+
+                card.appendChild(thumb);
+                card.appendChild(timeStr);
+                card.appendChild(nameStr);
+                container.appendChild(card);
+            });
+
+            draw();
+        }
+
+        // コマ追加・削除
+        function addNewFrame() {
+            const currentForm = formations[currentFrameIndex];
+            const nextTime = currentForm.time + 5.0;
+            formations.push({
+                id: 'f_' + Date.now(),
+                name: `コマ${formations.length + 1}`,
+                memo: '',
+                time: nextTime,
+                positions: currentForm.positions.map(p => ({...p}))
+            });
+            formations.sort((a, b) => a.time - b.time);
+            currentFrameIndex = formations.findIndex(f => f.time === nextTime);
+            updateUI();
+        }
+
+        function deleteCurrentFrame() {
+            if(formations.length <= 1) return alert('これ以上削除できません');
+            if(confirm(`現在の「${formations[currentFrameIndex].name}」を削除しますか？`)) {
+                formations.splice(currentFrameIndex, 1);
+                currentFrameIndex = Math.max(0, currentFrameIndex - 1);
+                updateUI();
+            }
+        }
+
+        function promptEditMemo() {
+            const currentForm = formations[currentFrameIndex];
+            const newMemo = prompt("このコマの指示メモを入力してください:", currentForm.memo || "");
+            if(newMemo !== null) {
+                currentForm.memo = newMemo;
+                updateUI();
+            }
+        }
+
+        function applyGroupColor(start, end, color) {
+            for(let i = start; i <= end; i++) {
+                memberColors[i] = color;
+            }
+            draw();
+        }
+        function resetAllColors() {
+            for(let i = 1; i <= totalCount; i++) memberColors[i] = '#3b82f6';
+            draw();
+        }
         function applySingleName() {
             const idx = parseInt(document.getElementById('name-target-idx').value);
             const val = document.getElementById('name-target-val').value.trim();
-            if(idx >= 1 && idx <= totalCount) { if(val) { memberNames[idx] = val; } else { delete memberNames[idx]; } buildLoginDropdown(); draw(); }
-        }
-        function applyGroupColor() {
-            if(userRole !== 'admin') return; const endNum = parseInt(document.getElementById('color-end-input').value) || 10; const color = document.getElementById('color-select').value;
-            for(let i = 1; i <= endNum; i++) { if(i <= totalCount) memberColors[i] = color; } draw();
-        }
-        function toggleFullScreen() { document.body.classList.toggle('fullscreen-mode'); resetZoom(); }
-        function resetZoom() { zoom = 1.0; offsetX = 0; offsetY = 0; draw(); }
-        function addNewFrame() {
-            if(userRole !== 'admin') return; const currentForm = formations[currentFrameIndex]; const nextTime = currentForm.time + 3.0;
-            formations.push({ id: 'f_' + Date.now(), name: `コマ ${formations.length + 1}`, memo: '', time: nextTime, positions: currentForm.positions.map(p => ({...p})) });
-            formations.sort((a, b) => a.time - b.time); currentFrameIndex = formations.findIndex(f => f.time === nextTime); selectedNumbers = []; updateUI();
-        }
-        function deleteCurrentFrame() {
-            if(userRole !== 'admin') return; if(formations.length <= 1) { alert('これ以上削除できません'); return; }
-            if(confirm(`「${formations[currentFrameIndex].name}」を削除しますか？`)) { formations.splice(currentFrameIndex, 1); currentFrameIndex = Math.max(0, currentFrameIndex - 1); selectedNumbers = []; updateUI(); }
-        }
-        function changePlaybackSpeed(speed) { currentPlaybackSpeed = speed; audio.playbackRate = speed; document.getElementById('speed-05').classList.remove('active'); document.getElementById('speed-075').classList.remove('active'); document.getElementById('speed-10').classList.remove('active'); if(speed === 0.5) document.getElementById('speed-05').classList.add('active'); if(speed === 0.75) document.getElementById('speed-075').classList.add('active'); if(speed === 1.0) document.getElementById('speed-10').classList.add('active'); }
-
-        function switchLoginTab(type) { document.getElementById('tab-perf').className = type === 'perf' ? 'tab-btn active' : 'tab-btn'; document.getElementById('tab-admin').className = type === 'admin' ? 'tab-btn active' : 'tab-btn'; document.getElementById('form-perf').style.display = type === 'perf' ? 'block' : 'none'; document.getElementById('form-admin').style.display = type === 'admin' ? 'block' : 'none'; }
-        function loginAsPerformer() { userRole = 'performer'; myMemberNumber = parseInt(document.getElementById('login-number-select').value); document.getElementById('login-screen').style.display = 'none'; setupAppMode(); }
-        function loginAsAdmin() { if(document.getElementById('admin-password').value === ADMIN_PASSWORD) { userRole = 'admin'; myMemberNumber = null; document.getElementById('login-screen').style.display = 'none'; setupAppMode(); } else { alert('パスワードが違います！'); } }
-        function logout() { audio.pause(); stopSyncLoop(); userRole = null; myMemberNumber = null; if(document.body.classList.contains('fullscreen-mode')) toggleFullScreen(); document.getElementById('admin-password').value = ''; document.getElementById('login-screen').style.display = 'flex'; loadFromCloud(); }
-
-        function setupAppMode() {
-            const statusBadge = document.getElementById('status-badge');
-            if(userRole === 'admin') {
-                document.getElementById('display-mode-title').innerText = '🛠️ 管理者エディタ'; statusBadge.innerText = '編集ロック解除中'; statusBadge.style.backgroundColor = '#2563eb';
-                document.getElementById('admin-controls').style.display = 'flex'; document.getElementById('performer-controls').style.display = 'none'; document.getElementById('admin-memo-input-wrap').style.display = 'block'; document.getElementById('performer-memo-wrap').style.display = 'none'; document.getElementById('audio-mark-btn').style.display = 'block'; document.getElementById('admin-file-io-wrap').style.display = 'flex';
-            } else {
-                const nameTag = memberNames[myMemberNumber] ? ` [${memberNames[myMemberNumber]}]` : '';
-                document.getElementById('display-mode-title').innerText = '📱 出演者マイ画面'; statusBadge.innerText = `${myMemberNumber}番${nameTag}`; statusBadge.style.backgroundColor = '#ea580c';
-                document.getElementById('admin-controls').style.display = 'none'; document.getElementById('performer-controls').style.display = 'block'; document.getElementById('admin-memo-input-wrap').style.display = 'none'; document.getElementById('performer-memo-wrap').style.display = 'block'; document.getElementById('audio-mark-btn').style.display = 'none'; document.getElementById('admin-file-io-wrap').style.display = 'none';
+            if(idx >= 1 && idx <= totalCount) {
+                if(val) memberNames[idx] = val;
+                else delete memberNames[idx];
+                buildLoginDropdown();
+                draw();
             }
-            selectedNumbers = []; resetZoom(); updateUI();
         }
 
-        function loadAudioFile(input) { const file = input.files[0]; if (!file) return; audio.src = URL.createObjectURL(file); audio.load(); isAudioLoaded = true; setTimeout(() => { audio.playbackRate = currentPlaybackSpeed; }, 200); }
-        audio.addEventListener('timeupdate', () => { updatePlayerTimeDisplay(); if(!audio.paused) { syncAnimationToAudio(); } });
-        audio.addEventListener('ended', () => { document.getElementById('play-pause-btn').innerText = '▶️ 再生'; stopSyncLoop(); });
-        function togglePlay() { if (!isAudioLoaded) { alert('先に音楽ファイルを読み込ませてください！'); return; } if (audio.paused) { audio.playbackRate = currentPlaybackSpeed; audio.play(); document.getElementById('play-pause-btn').innerText = '⏸️ 停止'; startSyncLoop(); } else { audio.pause(); document.getElementById('play-pause-btn').innerText = '▶️ 再生'; stopSyncLoop(); } }
-        function handleSeekBar(val) { if (!isAudioLoaded) return; audio.currentTime = (val / 100) * audio.duration; syncAnimationToAudio(); }
-        function updatePlayerTimeDisplay() { const current = formatTime(audio.currentTime), total = isAudioLoaded ? formatTime(audio.duration) : "00:00"; document.getElementById('time-display').innerText = `${current} / ${total}`; if (isAudioLoaded && !audio.paused) { document.getElementById('seek-bar').value = (audio.currentTime / audio.duration) * 100; } }
-        function formatTime(secs) { return `${Math.floor(secs / 60).toString().padStart(2, '0')}:${Math.floor(secs % 60).toString().padStart(2, '0')}`; }
-        function markCurrentTime() { if(!isAudioLoaded) return; formations[currentFrameIndex].time = Math.round(audio.currentTime * 10) / 10; formations.sort((a, b) => a.time - b.time); updateUI(); }
-        function startSyncLoop() { if(!animationFrameId) { animationFrameId = requestAnimationFrame(syncLoopRender); } }
-        function stopSyncLoop() { if(animationFrameId) { cancelAnimationFrame(animationFrameId); animationFrameId = null; } }
-        function syncLoopRender() { syncAnimationToAudio(); if(!audio.paused) { animationFrameId = requestAnimationFrame(syncLoopRender); } }
+        // 音楽プレイヤー関連
+        function loadAudioFile(input) {
+            const file = input.files[0]; if (!file) return;
+            audio.src = URL.createObjectURL(file);
+            audio.load(); isAudioLoaded = true;
+        }
+        function togglePlay() {
+            if(!isAudioLoaded) return alert("先に音楽ファイルを読み込ませてください！");
+            if(audio.paused) {
+                audio.playbackRate = currentPlaybackSpeed;
+                audio.play();
+                document.getElementById('play-pause-btn').innerText = '⏸ 停止';
+                if(!animationFrameId) animationFrameId = requestAnimationFrame(syncLoopRender);
+            } else {
+                audio.pause();
+                document.getElementById('play-pause-btn').innerText = '▶ 再生';
+                if(animationFrameId) { cancelAnimationFrame(animationFrameId); animationFrameId = null; }
+            }
+        }
+        function handleSeekBar(val) {
+            if(!isAudioLoaded) return;
+            audio.currentTime = (val / 100) * audio.duration;
+            syncAnimationToAudio();
+        }
+        function changePlaybackSpeed(speed) {
+            currentPlaybackSpeed = speed; audio.playbackRate = speed;
+            document.getElementById('speed-05').className = speed === 0.5 ? 'btn btn-primary' : 'btn';
+            document.getElementById('speed-075').className = speed === 0.75 ? 'btn btn-primary' : 'btn';
+            document.getElementById('speed-10').className = speed === 1.0 ? 'btn btn-primary' : 'btn';
+        }
+        function markCurrentTime() {
+            if(!isAudioLoaded) return;
+            formations[currentFrameIndex].time = Math.round(audio.currentTime * 1000) / 1000;
+            formations.sort((a, b) => a.time - b.time);
+            updateUI();
+        }
 
+        function syncLoopRender() {
+            syncAnimationToAudio();
+            pulsePulseRadius = (pulsePulseRadius + 0.3) % 20; // 28番の波紋アニメーションを動かす
+            if(!audio.paused) {
+                animationFrameId = requestAnimationFrame(syncLoopRender);
+            } else {
+                animationFrameId = requestAnimationFrame(syncLoopRender); // 停止中も波紋を描画し続けるためループ
+            }
+        }
+
+        // 🟢 音楽連動コアシステム（タイムラインと完全自動シンクロ）
         function syncAnimationToAudio() {
-            const currentTime = audio.currentTime; let activeIdx = 0;
-            for (let i = 0; i < formations.length; i++) { if (formations[i].time <= currentTime) activeIdx = i; }
-            currentFrameIndex = activeIdx; let nextIdx = activeIdx + 1; const currentForm = formations[activeIdx];
-            if (nextIdx >= formations.length) { renderPositionsDirect(currentForm.positions); updateUIWithoutRedraw(); return; }
-            const nextForm = formations[nextIdx]; const totalGap = nextForm.time - currentForm.time;
-            let progress = totalGap > 0 ? (currentTime - currentForm.time) / totalGap : 1.0; progress = Math.max(0, Math.min(1, progress));
+            const currentTime = audio.currentTime;
+            let activeIdx = 0;
+            for (let i = 0; i < formations.length; i++) {
+                if (formations[i].time <= currentTime) activeIdx = i;
+            }
+            
+            const timeDisp = document.getElementById('time-display');
+            if(timeDisp) timeDisp.innerText = `${formatTimeFull(currentTime)} / ${isAudioLoaded ? formatTimeFull(audio.duration) : '00:00.000'}`;
+            if(isAudioLoaded && !audio.paused) {
+                document.getElementById('seek-bar').value = (currentTime / audio.duration) * 100;
+            }
+
+            if(currentFrameIndex !== activeIdx) {
+                currentFrameIndex = activeIdx;
+                // 下部のタイムライン表示を自動連動更新
+                const cards = document.querySelectorAll('.timeline-card');
+                cards.forEach((c, i) => {
+                    if(i === activeIdx) c.classList.add('active');
+                    else c.classList.remove('active');
+                });
+                document.getElementById('status-frame').innerText = formations[activeIdx].name;
+                document.getElementById('status-time').innerText = formatTimeFull(formations[activeIdx].time);
+                document.getElementById('memo-header-title').innerText = `指示メモ (${formations[activeIdx].name})`;
+                document.getElementById('memo-body-text').innerText = formations[activeIdx].memo || '指示は登録されていません。';
+            }
+
+            let nextIdx = activeIdx + 1;
+            const currentForm = formations[activeIdx];
+            if (nextIdx >= formations.length) {
+                renderPositionsDirect(currentForm.positions); return;
+            }
+            const nextForm = formations[nextIdx];
+            const totalGap = nextForm.time - currentForm.time;
+            let progress = totalGap > 0 ? (currentTime - currentForm.time) / totalGap : 1.0;
+            progress = Math.max(0, Math.min(1, progress));
+            
+            // スムーズなイージング移動
             let easeProgress = progress < 0.5 ? 2 * progress * progress : 1 - Math.pow(-2 * progress + 2, 2) / 2;
-            renderInterpolated(currentForm.positions, nextForm.positions, easeProgress); updateUIWithoutRedraw();
+            renderInterpolated(currentForm.positions, nextForm.positions, easeProgress);
         }
 
-        const canvas = document.getElementById('stageCanvas'); const ctx = canvas.getContext('2d');
-        function draw() { if (isAudioLoaded && !audio.paused) return; const currentForm = formations[currentFrameIndex]; if (currentForm) renderPositionsDirect(currentForm.positions); }
-        function applyCameraTransform(size) { ctx.translate(size/2 + offsetX, size/2 + offsetY); ctx.scale(zoom, zoom); ctx.translate(-size/2, -size/2); }
+        function formatTimeFull(secs) {
+            const m = Math.floor(secs / 60).toString().padStart(2, '0');
+            const s = Math.floor(secs % 60).toString().padStart(2, '0');
+            const ms = Math.floor((secs % 1) * 1000).toString().padStart(3, '0');
+            return `${m}:${s}.${ms}`;
+        }
+
+        // === キャンバス描画グラフィックス ===
+        function draw() {
+            if (isAudioLoaded && !audio.paused) return;
+            const currentForm = formations[currentFrameIndex];
+            if (currentForm) renderPositionsDirect(currentForm.positions);
+        }
+
+        function applyCameraTransform() {
+            ctx.translate(800/2 + offsetX, 600/2 + offsetY);
+            ctx.scale(zoom, zoom);
+            ctx.translate(-800/2, -600/2);
+        }
+
+        // 3Dパースの効いた超リアルなステージ背景の描写
+        function drawStageBackground() {
+            // 背景のグラデーション
+            let grad = ctx.createLinearGradient(0, 0, 0, 600);
+            grad.addColorStop(0, '#0f172a');
+            grad.addColorStop(1, '#1e293b');
+            ctx.fillStyle = grad;
+            ctx.fillRect(0, 0, 800, 600);
+
+            // 3Dパースペクティブグリッド（画像風の奥が狭い四角形ステージ）
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
+            ctx.lineWidth = 1;
+            
+            // 横線
+            for(let i=0; i<=10; i++) {
+                let y = 150 + i * 40;
+                let xLeft = 150 - i * 12;
+                let xRight = 650 + i * 12;
+                ctx.beginPath(); ctx.moveTo(xLeft, y); ctx.lineTo(xRight, y); ctx.stroke();
+            }
+            // 縦線（パース付き）
+            for(let i=0; i<=8; i++) {
+                let xTop = 150 + i * 62.5;
+                let xBottom = 30 + i * 92.5;
+                ctx.beginPath(); ctx.moveTo(xTop, 150); ctx.lineTo(xBottom, 550); ctx.stroke();
+            }
+
+            // センターライン（赤・点線）
+            ctx.strokeStyle = 'rgba(239, 68, 68, 0.4)';
+            ctx.lineWidth = 1.5;
+            ctx.setLineDash([4, 4]);
+            ctx.beginPath(); ctx.moveTo(400, 100); ctx.lineTo(400, 580); ctx.stroke();
+            ctx.setLineDash([]);
+
+            // ステージ手前フチ
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+            ctx.lineWidth = 3;
+            ctx.beginPath(); ctx.moveTo(30, 550); ctx.lineTo(770, 550); ctx.stroke();
+        }
 
         function renderPositionsDirect(positions) {
-            const size = 600; canvas.width = size; canvas.height = size; ctx.clearRect(0, 0, size, size); ctx.save(); applyCameraTransform(size); drawStageBase(size);
+            canvas.width = 800; canvas.height = 600;
+            ctx.clearRect(0, 0, 800, 600);
+            ctx.save();
+            applyCameraTransform();
+            drawStageBackground();
+
             positions.forEach(pos => {
-                if (userRole === 'performer' && pos.memberNumber === myMemberNumber) return;
-                const drawX = (pos.x / 1000) * size, drawY = (pos.y / 1000) * size; const isSelected = selectedNumbers.includes(pos.memberNumber);
-                ctx.beginPath(); ctx.arc(drawX, drawY, 12, 0, Math.PI * 2); ctx.fillStyle = memberColors[pos.memberNumber] || '#3b82f6'; ctx.strokeStyle = isSelected ? '#ef4444' : '#ffffff'; ctx.lineWidth = isSelected ? 3.5 : 1.5; ctx.fill(); ctx.stroke();
-                ctx.fillStyle = '#ffffff'; ctx.font = 'bold 9px sans-serif'; const label = memberNames[pos.memberNumber] ? memberNames[pos.memberNumber].substring(0,2) : pos.memberNumber; ctx.fillText(label, drawX, drawY + 0.5);
+                const drawX = (pos.x / 1000) * 800;
+                const drawY = (pos.y / 1000) * 600;
+                const isSelected = selectedNumbers.includes(pos.memberNumber);
+                const isMyNum = (userRole === 'performer' && pos.memberNumber === myMemberNumber);
+
+                if (isMyNum) {
+                    // 出演者マイ画面用のピカピカ波紋エフェクト（オレンジ色に大きく光る）
+                    ctx.save();
+                    ctx.shadowColor = '#ea580c';
+                    ctx.shadowBlur = 20;
+                    ctx.beginPath(); ctx.arc(drawX, drawY, 16 + pulsePulseRadius/2, 0, Math.PI*2);
+                    ctx.strokeStyle = `rgba(234, 88, 12, ${1 - pulsePulseRadius/20})`;
+                    ctx.lineWidth = 3; ctx.stroke(); ctx.restore();
+
+                    ctx.beginPath(); ctx.arc(drawX, drawY, 18, 0, Math.PI * 2);
+                    ctx.fillStyle = '#ea580c';
+                    ctx.strokeStyle = '#ffffff';
+                    ctx.lineWidth = 3;
+                    ctx.fill(); ctx.stroke();
+                } else {
+                    // 通常のメンバー丸
+                    ctx.beginPath(); ctx.arc(drawX, drawY, 14, 0, Math.PI * 2);
+                    ctx.fillStyle = memberColors[pos.memberNumber] || '#3b82f6';
+                    ctx.strokeStyle = isSelected ? '#ef4444' : '#ffffff';
+                    ctx.lineWidth = isSelected ? 3.5 : 1.5;
+                    ctx.fill(); ctx.stroke();
+                }
+
+                // 文字（番号または名前）
+                ctx.fillStyle = '#ffffff';
+                ctx.font = 'bold 11px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                const label = memberNames[pos.memberNumber] ? memberNames[pos.memberNumber].substring(0,2) : pos.memberNumber;
+                ctx.fillText(label, drawX, drawY + 0.5);
             });
-            if (userRole === 'performer') { const myPos = positions.find(p => p.memberNumber === myMemberNumber); if (myPos) drawMyCircle((myPos.x / 1000) * size, (myPos.y / 1000) * size); }
+
             ctx.restore();
-            if (isSelecting && userRole === 'admin') { ctx.strokeStyle = 'rgba(239, 68, 68, 0.8)'; ctx.lineWidth = 1.5; ctx.fillStyle = 'rgba(239, 68, 68, 0.15)'; const w = selectEnd.canvasX - selectStart.canvasX, h = selectEnd.canvasY - selectStart.canvasY; ctx.fillRect(selectStart.canvasX, selectStart.canvasY, w, h); ctx.strokeRect(selectStart.canvasX, selectStart.canvasY, w, h); }
+
+            // 範囲選択用の赤い矩形枠線
+            if (isSelecting && currentTool === 'box') {
+                ctx.strokeStyle = 'rgba(239, 68, 68, 0.8)';
+                ctx.lineWidth = 2;
+                ctx.fillStyle = 'rgba(239, 68, 68, 0.15)';
+                const w = selectEnd.canvasX - selectStart.canvasX;
+                const h = selectEnd.canvasY - selectStart.canvasY;
+                ctx.fillRect(selectStart.canvasX, selectStart.canvasY, w, h);
+                ctx.strokeRect(selectStart.canvasX, selectStart.canvasY, w, h);
+            }
         }
 
         function renderInterpolated(startPositions, endPositions, ease) {
-            const size = 600; canvas.width = size; canvas.height = size; ctx.clearRect(0, 0, size, size); ctx.save(); applyCameraTransform(size); drawStageBase(size);
+            canvas.width = 800; canvas.height = 600;
+            ctx.clearRect(0, 0, 800, 600);
+            ctx.save();
+            applyCameraTransform();
+            drawStageBackground();
+
             for (let i = 1; i <= totalCount; i++) {
-                const startP = startPositions.find(p => p.memberNumber === i), endP = endPositions.find(p => p.memberNumber === i); if (!startP || !endP) continue;
-                let currentX = startP.x + (endP.x - startP.x) * ease, currentY = startP.y + (endP.y - startP.y) * ease; if (userRole === 'performer' && i === myMemberNumber) continue;
-                const drawX = (currentX / 1000) * size, drawY = (currentY / 1000) * size;
-                ctx.beginPath(); ctx.arc(drawX, drawY, 12, 0, Math.PI * 2); ctx.fillStyle = memberColors[i] || '#3b82f6'; ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 1.5; ctx.fill(); ctx.stroke();
-                ctx.fillStyle = '#ffffff'; ctx.font = 'bold 9px sans-serif'; const label = memberNames[i] ? memberNames[i].substring(0,2) : i; ctx.fillText(label, drawX, drawY + 0.5);
+                const startP = startPositions.find(p => p.memberNumber === i);
+                const endP = endPositions.find(p => p.memberNumber === i);
+                if (!startP || !endP) continue;
+
+                let curX = startP.x + (endP.x - startP.x) * ease;
+                let curY = startP.y + (endP.y - startP.y) * ease;
+
+                const drawX = (curX / 1000) * 800;
+                const drawY = (curY / 1000) * 600;
+                const isMyNum = (userRole === 'performer' && i === myMemberNumber);
+
+                if (isMyNum) {
+                    ctx.save();
+                    ctx.shadowColor = '#ea580c'; ctx.shadowBlur = 20;
+                    ctx.beginPath(); ctx.arc(drawX, drawY, 16 + pulsePulseRadius/2, 0, Math.PI*2);
+                    ctx.strokeStyle = `rgba(234, 88, 12, ${1 - pulsePulseRadius/20})`;
+                    ctx.lineWidth = 3; ctx.stroke(); ctx.restore();
+
+                    ctx.beginPath(); ctx.arc(drawX, drawY, 18, 0, Math.PI * 2);
+                    ctx.fillStyle = '#ea580c'; ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 3;
+                    ctx.fill(); ctx.stroke();
+                } else {
+                    ctx.beginPath(); ctx.arc(drawX, drawY, 14, 0, Math.PI * 2);
+                    ctx.fillStyle = memberColors[i] || '#3b82f6';
+                    ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 1.5;
+                    ctx.fill(); ctx.stroke();
+                }
+
+                ctx.fillStyle = '#ffffff';
+                ctx.font = 'bold 11px sans-serif';
+                ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+                const label = memberNames[i] ? memberNames[i].substring(0,2) : i;
+                ctx.fillText(label, drawX, drawY + 0.5);
             }
-            if (userRole === 'performer') { const startP = startPositions.find(p => p.memberNumber === myMemberNumber), endP = endPositions.find(p => p.memberNumber === myMemberNumber); if (startP && endP) drawMyCircle(((startP.x + (endP.x - startP.x) * ease) / 1000) * size, ((startP.y + (endP.y - startP.y) * ease) / 1000) * size); }
             ctx.restore();
         }
 
-        function drawStageBase(size) { ctx.fillStyle = '#cbd5e1'; ctx.fillRect(0, 0, size, size * 0.12); ctx.fillStyle = '#475569'; ctx.font = 'bold 22px sans-serif'; ctx.textAlign = 'center'; ctx.fillText('ステージ（前）', size / 2, size * 0.08); ctx.strokeStyle = '#94a3b8'; ctx.lineWidth = 1; ctx.setLineDash([5, 5]); ctx.beginPath(); ctx.moveTo(size / 2, 0); ctx.lineTo(size / 2, size); ctx.stroke(); ctx.beginPath(); ctx.moveTo(0, size * 0.55); ctx.lineTo(size, size * 0.55); ctx.stroke(); ctx.setLineDash([]); }
-        function drawMyCircle(x, y) { ctx.shadowColor = '#ea580c'; ctx.shadowBlur = 15; ctx.beginPath(); ctx.arc(x, y, 17, 0, Math.PI * 2); ctx.fillStyle = '#ea580c'; ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 3; ctx.fill(); ctx.stroke(); ctx.shadowBlur = 0; ctx.fillStyle = '#ffffff'; ctx.font = 'bold 12px sans-serif'; const label = memberNames[myMemberNumber] ? memberNames[myMemberNumber].substring(0,2) : myMemberNumber; ctx.fillText(label, x, y + 0.5); }
+        // 座標計算関数
+        function getCoordinates(e) {
+            const rect = canvas.getBoundingClientRect();
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+            const canvasX = ((clientX - rect.left) / rect.width) * 800;
+            const canvasY = ((clientY - rect.top) / rect.height) * 600;
+            
+            const dataX = (((canvasX - 800/2 - offsetX) / zoom) + 800/2) * (1000 / 800);
+            const dataY = (((canvasY - 600/2 - offsetY) / zoom) + 600/2) * (1000 / 600);
+            return { dataX, dataY, canvasX, canvasY };
+        }
 
-        function getCoordinates(e) { const rect = canvas.getBoundingClientRect(); const clientX = e.touches ? e.touches[0].clientX : e.clientX; const clientY = e.touches ? e.touches[0].clientY : e.clientY; const canvasX = ((clientX - rect.left) / rect.width) * 600; const canvasY = ((clientY - rect.top) / rect.height) * 600; const size = 600; const dataX = (((canvasX - size/2 - offsetX) / zoom) + size/2) * (1000 / size); const dataY = (((canvasY - size/2 - offsetY) / zoom) + size/2) * (1000 / size); return { dataX, dataY, canvasX, canvasY }; }
-
-        let dragMode = null;
+        // マウス・タッチ操作イベントハンドラ
         function handleStart(e) {
-            if (!audio.paused) return; if (e.touches && e.touches.length === 2) { dragMode = 'pan_camera'; isPanning = true; lastTouchDist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY); return; }
-            const coords = getCoordinates(e); const currentForm = formations[currentFrameIndex]; const hit = currentForm.positions.find(p => Math.sqrt(Math.pow(p.x - coords.dataX, 2) + Math.pow(p.y - coords.dataY, 2)) < 35);
-            if (userRole === 'admin' && hit) { dragMode = 'move_member'; draggedNumber = hit.memberNumber; if (!selectedNumbers.includes(draggedNumber)) { selectedNumbers = [draggedNumber]; } dragStartPositions = currentForm.positions.map(p => ({...p})); startPanX = coords.dataX; startPanY = coords.dataY; } 
-            else if (userRole === 'admin' && !e.shiftKey && !e.touches) { dragMode = 'select_box'; isSelecting = true; selectStart = coords; selectEnd = coords; } 
-            else { dragMode = 'pan_camera'; isPanning = true; const clientX = e.touches ? e.touches[0].clientX : e.clientX; const clientY = e.touches ? e.touches[0].clientY : e.clientY; startPanX = clientX - offsetX; startPanY = clientY - offsetY; }
-            draw();
-        }
-        function handleMove(e) {
-            if (!audio.paused) return; if (e.touches && e.touches.length === 2 && dragMode === 'pan_camera') { if (e.cancelable) e.preventDefault(); const dist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY); zoom = Math.max(0.5, Math.min(5.0, zoom * (dist / lastTouchDist))); lastTouchDist = dist; draw(); return; }
-            const coords = getCoordinates(e); const currentForm = formations[currentFrameIndex];
-            if (dragMode === 'move_member' && draggedNumber !== null) { if (e.cancelable) e.preventDefault(); const deltaX = coords.dataX - startPanX; const deltaY = coords.dataY - startPanY; selectedNumbers.forEach(num => { const orig = dragStartPositions.find(p => p.memberNumber === num); const target = currentForm.positions.find(p => p.memberNumber === num); if (orig && target) { target.x = Math.max(15, Math.min(985, orig.x + deltaX)); target.y = Math.max(15, Math.min(985, orig.y + deltaY)); } }); draw(); } 
-            else if (dragMode === 'select_box' && isSelecting) { if (e.cancelable) e.preventDefault(); selectEnd = coords; draw(); } 
-            else if (dragMode === 'pan_camera' && isPanning) { if (e.cancelable) e.preventDefault(); const clientX = e.touches ? e.touches[0].clientX : e.clientX; const clientY = e.touches ? e.touches[0].clientY : e.clientY; offsetX = clientX - startPanX; offsetY = clientY - startPanY; draw(); }
-        }
-        function handleEnd() { if (dragMode === 'select_box' && isSelecting) { const currentForm = formations[currentFrameIndex]; const xMin = Math.min(selectStart.dataX, selectEnd.dataX); const xMax = Math.max(selectStart.dataX, selectEnd.dataX); const yMin = Math.min(selectStart.dataY, selectEnd.dataY); const yMax = Math.max(selectStart.dataY, selectEnd.dataY); selectedNumbers = []; currentForm.positions.forEach(pos => { if (pos.x >= xMin && pos.x <= xMax && pos.y >= yMin && pos.y <= yMax) { selectedNumbers.push(pos.memberNumber); } }); isSelecting = false; } dragMode = null; draggedNumber = null; isPanning = false; isSelecting = false; draw(); }
+            if (!audio.paused && isAudioLoaded) return;
+            const coords = getCoordinates(e);
+            const currentForm = formations[currentFrameIndex];
+            
+            // 人形タッチ判定
+            const hit = currentForm.positions.find(p => Math.sqrt(Math.pow(p.x - coords.dataX, 2) + Math.pow(p.y - coords.dataY, 2)) < 30);
 
-        canvas.addEventListener('wheel', e => { e.preventDefault(); if (e.deltaY < 0) { zoom = Math.min(5.0, zoom * 1.1); } else { zoom = Math.max(0.5, zoom / 1.1); } draw(); }, { passive: false });
+            if (userRole === 'admin' && hit && currentTool === 'select') {
+                dragMode = 'move_member';
+                draggedNumber = hit.memberNumber;
+                if (!selectedNumbers.includes(draggedNumber)) {
+                    selectedNumbers = [draggedNumber];
+                }
+                dragStartPositions = currentForm.positions.map(p => ({...p}));
+                startPanX = coords.dataX;
+                startPanY = coords.dataY;
+            } else if (userRole === 'admin' && currentTool === 'box') {
+                dragMode = 'select_box';
+                isSelecting = true;
+                selectStart = coords;
+                selectEnd = coords;
+            } else {
+                dragMode = 'pan';
+                isPanning = true;
+                const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+                const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+                startPanX = clientX - offsetX;
+                startPanY = clientY - offsetY;
+            }
+            updateUI();
+        }
+
+        function handleMove(e) {
+            if (!audio.paused && isAudioLoaded) return;
+            const coords = getCoordinates(e);
+            const currentForm = formations[currentFrameIndex];
+
+            if (dragMode === 'move_member' && draggedNumber !== null) {
+                if (e.cancelable) e.preventDefault();
+                const deltaX = coords.dataX - startPanX;
+                const deltaY = coords.dataY - startPanY;
+                
+                selectedNumbers.forEach(num => {
+                    const orig = dragStartPositions.find(p => p.memberNumber === num);
+                    const target = currentForm.positions.find(p => p.memberNumber === num);
+                    if (orig && target) {
+                        target.x = Math.max(10, Math.min(990, orig.x + deltaX));
+                        target.y = Math.max(10, Math.min(990, orig.y + deltaY));
+                    }
+                });
+                draw();
+            } else if (dragMode === 'select_box' && isSelecting) {
+                if (e.cancelable) e.preventDefault();
+                selectEnd = coords;
+                draw();
+            } else if (dragMode === 'pan' && isPanning) {
+                if (e.cancelable) e.preventDefault();
+                const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+                const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+                offsetX = clientX - startPanX;
+                offsetY = clientY - startPanY;
+                draw();
+            }
+        }
+
+        function handleEnd() {
+            if (dragMode === 'select_box' && isSelecting) {
+                const currentForm = formations[currentFrameIndex];
+                const xMin = Math.min(selectStart.dataX, selectEnd.dataX);
+                const xMax = Math.max(selectStart.dataX, selectEnd.dataX);
+                const yMin = Math.min(selectStart.dataY, selectEnd.dataY);
+                const yMax = Math.max(selectStart.dataY, selectEnd.dataY);
+                
+                selectedNumbers = [];
+                currentForm.positions.forEach(pos => {
+                    if (pos.x >= xMin && pos.x <= xMax && pos.y >= yMin && pos.y <= yMax) {
+                        selectedNumbers.push(pos.memberNumber);
+                    }
+                });
+                isSelecting = false;
+                setTool('select'); // 移動ツールに戻す
+            }
+            dragMode = null; draggedNumber = null; isPanning = false; isSelecting = false;
+            updateUI();
+        }
+
         canvas.addEventListener('mousedown', handleStart); canvas.addEventListener('mousemove', handleMove); canvas.addEventListener('mouseup', handleEnd); canvas.addEventListener('mouseleave', handleEnd);
         canvas.addEventListener('touchstart', handleStart, { passive: false }); canvas.addEventListener('touchmove', handleMove, { passive: false }); canvas.addEventListener('touchend', handleEnd);
 
+        // マウスホイールでのズームイン・アウト
+        canvas.addEventListener('wheel', e => {
+            e.preventDefault();
+            if (e.deltaY < 0) zoom = Math.min(4.0, zoom * 1.1);
+            else zoom = Math.max(0.6, zoom / 1.1);
+            draw();
+        }, { passive: false });
+
+        function toggleFullScreen() { document.body.classList.toggle('fullscreen-mode'); offsetX = 0; offsetY = 0; zoom = 1.0; draw(); }
+
+        // === 配置テンプレート作成関数群 ===
         window.applyTemplate = function(type) {
-            if(userRole !== 'admin' || !audio.paused) return; const currentForm = formations[currentFrameIndex]; currentForm.positions = [];
+            if(userRole !== 'admin') return;
+            const currentForm = formations[currentFrameIndex];
+            currentForm.positions = [];
+            
             for (let i = 0; i < totalCount; i++) {
-                const num = i + 1; let x = 500, y = 550; const rate = i / (totalCount - 1 || 1);
-                if (type === 'line') { x = 120 + rate * 760; y = 550; }
-                else if (type === 'vertLine') { x = 500; y = 180 + rate * 700; }
-                else if (type === 'circle') { const angle = (i / totalCount) * 2 * Math.PI - Math.PI / 2; x = 500 + Math.cos(angle) * 300; y = 550 + Math.sin(angle) * 300; }
-                else if (type === 'vShape') { const isLeft = i < totalCount / 2; const step = isLeft ? i : (totalCount - 1 - i); x = isLeft ? 500 - (totalCount/2 - i)*12 : 500 + (i - totalCount/2)*12; y = 300 + step * (700 / totalCount * 1.5); }
-                else if (type === 'revVShape') { const isLeft = i < totalCount / 2; const step = isLeft ? i : (totalCount - 1 - i); x = isLeft ? 500 - (totalCount/2 - i)*12 : 500 + (i - totalCount/2)*12; y = 850 - step * (700 / totalCount * 1.5); }
-                else if (type === 'block') { const half = Math.floor(totalCount / 2); if (i < half) { x = 150 + (i / (half - 1 || 1)) * 700; y = 450; } else { x = 150 + ((i - half) / (totalCount - half - 1 || 1)) * 700; y = 650; } }
-                else if (type === 'xShape') { if (i < totalCount / 2) { const r = i / (totalCount / 2 - 1 || 1); x = 200 + r * 600; y = 250 + r * 600; } else { const r = (i - totalCount / 2) / (totalCount - totalCount / 2 - 1 || 1); x = 800 - r * 600; y = 250 + r * 600; } }
-                else if (type === 'wave') { x = 120 + rate * 760; y = 550 + Math.sin(rate * Math.PI * 2) * 200; }
-                else if (type === 'random') { x = 150 + (Math.sin(i * 9) * 0.5 + 0.5) * 700; y = 200 + (Math.cos(i * 7) * 0.5 + 0.5) * 650; }
+                const num = i + 1; let x = 500, y = 500;
+                const rate = i / (totalCount - 1 || 1);
+                
+                if (type === 'line') { x = 150 + rate * 700; y = 400; }
+                else if (type === 'vertLine') { x = 400; y = 160 + rate * 380; }
+                else if (type === 'block') { 
+                    x = 200 + (i % 10) * 45; y = 220 + Math.floor(i / 10) * 45; 
+                } else if (type === 'rect') {
+                    if(i < 20) { x = 200 + (i/19)*400; y = 250; }
+                    else if(i < 40) { x = 600; y = 250 + ((i-20)/19)*200; }
+                    else if(i < 60) { x = 600 - ((i-40)/19)*400; y = 450; }
+                    else { x = 200; y = 450 - ((i-60)/9)*200; }
+                } else if (type === 'circle') {
+                    const angle = (i / totalCount) * 2 * Math.PI - Math.PI / 2;
+                    x = 400 + Math.cos(angle) * 200; y = 350 + Math.sin(angle) * 170;
+                } else if (type === 'vShape') {
+                    const isLeft = i < totalCount / 2;
+                    const step = isLeft ? i : (totalCount - 1 - i);
+                    x = isLeft ? 400 - (totalCount/2 - i)*11 : 400 + (i - totalCount/2)*11;
+                    y = 220 + step * 9;
+                } else if (type === 'triangle') {
+                    if (i < 25) { x = 400 - i*10; y = 200 + i*12; }
+                    else if (i < 50) { x = 150 + (i-25)*20; y = 500; }
+                    else { x = 650 - (i-50)*10; y = 500 - (i-50)*12; }
+                } else if (type === 'diamond') {
+                    if(i < 18) { x = 400 - i*12; y = 180 + i*10; }
+                    else if(i < 36) { x = 184 + (i-18)*12; y = 360 + (i-18)*10; }
+                    else if(i < 54) { x = 400 + (i-36)*12; y = 540 - (i-36)*10; }
+                    else { x = 616 - (i-54)*12; y = 360 - (i-54)*10; }
+                }
                 currentForm.positions.push({ memberNumber: num, x, y });
             }
-            selectedNumbers = []; draw();
+            selectedNumbers = [];
+            draw();
         };
 
-        function updateUI() { updateUIWithoutRedraw(); draw(); }
-        function updateUIWithoutRedraw() {
-            const tl = document.getElementById('timeline-list'); if(!tl) return; tl.innerHTML = '';
-            formations.forEach((form, idx) => {
-                const btn = document.createElement('button'); btn.className = 'frame-btn'; btn.innerHTML = `${form.name}<span class="frame-time-tag">⏱️ ${form.time.toFixed(1)}秒</span>`;
-                if (currentFrameIndex === idx) { btn.style.backgroundColor = userRole === 'admin' ? '#2563eb' : '#ea580c'; btn.style.color = 'white'; } else { btn.style.backgroundColor = '#f8fafc'; btn.style.color = '#334155'; }
-                btn.onclick = () => { if(!audio.paused) togglePlay(); currentFrameIndex = idx; if(isAudioLoaded) audio.currentTime = form.time; selectedNumbers = []; updateUI(); }; tl.appendChild(btn);
-            });
-            const currentForm = formations[currentFrameIndex]; if (!currentForm) return;
-            document.getElementById('frame-time-input').value = currentForm.time;
-            if(userRole === 'admin') { const nameInput = document.getElementById('frame-name-input'); const memoInput = document.getElementById('frame-memo-input'); if(nameInput) nameInput.value = currentForm.name; if(memoInput) memoInput.value = currentForm.memo || ''; } 
-            else { const memoText = document.getElementById('performer-memo-text'); if (memoText) { if (currentForm.memo && currentForm.memo.trim() !== '') { memoText.innerText = `📝 指示: ${currentForm.memo}`; memoText.style.backgroundColor = '#fffae6'; memoText.style.color = '#7a5f00'; memoText.style.borderLeft = '4px solid #d97706'; } else { memoText.innerText = '💡 指示メモはまだありません'; memoText.style.backgroundColor = '#f1f5f9'; memoText.style.color = '#64748b'; memoText.style.borderLeft = '4px solid #cbd5e1'; } } }
-        }
-
-        document.getElementById('frame-name-input').oninput = e => { if(userRole === 'admin') { formations[currentFrameIndex].name = e.target.value; updateUIWithoutRedraw(); } };
-        document.getElementById('frame-time-input').onchange = e => { if(userRole !== 'admin') return; formations[currentFrameIndex].time = Math.max(0, parseFloat(e.target.value) || 0); formations.sort((a, b) => a.time - b.time); updateUI(); };
-        document.getElementById('frame-memo-input').oninput = e => { if(userRole === 'admin') { formations[currentFrameIndex].memo = e.target.value; } };
-        document.getElementById('total-count-input').onchange = e => { if(userRole !== 'admin') return; totalCount = Math.max(1, Math.min(150, parseInt(e.target.value) || 70)); initFirstFrame(); buildLoginDropdown(); updateUI(); };
-
-        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-        
-        // 🚀 初回起動時にスプレッドシートから自動読み込み
+        // アプリ起動処理
         loadFromCloud();
+        // 停止中もアニメーション（波紋）を滑らかに描画し続けるためのループ起動
+        if(!animationFrameId) animationFrameId = requestAnimationFrame(syncLoopRender);
     </script>
 </body>
 </html>
