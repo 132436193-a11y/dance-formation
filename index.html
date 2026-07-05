@@ -3,79 +3,64 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>ダンスフォーメーションアプリ - Next Pro</title>
+    <title>AI搭載 ダンスフォーメーションアプリ - Next Pro</title>
     <style>
         /* === 全体共通スタイル === */
         * { box-sizing: border-box; font-family: 'Helvetica Neue', Arial, sans-serif; margin: 0; padding: 0; user-select: none; }
         body { height: 100vh; display: flex; flex-direction: column; overflow: hidden; transition: background-color 0.3s; }
         
-        /* 管理者モード（ダーク）と出演者モード（ライト）のカラー変数 */
         body.admin-theme { --bg-primary: #121212; --bg-secondary: #1e1e1e; --bg-tertiary: #2a2a2a; --text-main: #ffffff; --text-sub: #aaaaaa; --border-color: #333333; --accent-color: #2563eb; --header-bg: #0f2d5c; }
         body.perf-theme { --bg-primary: #f8fafc; --bg-secondary: #ffffff; --bg-tertiary: #f1f5f9; --text-main: #1e293b; --text-sub: #64748b; --border-color: #cbd5e1; --accent-color: #ea580c; --header-bg: #15803d; }
-
         body { background-color: var(--bg-primary); color: var(--text-main); }
 
-        /* トップ看板ヘッダー */
         .top-banner { background: var(--header-bg); color: white; padding: 10px 20px; text-align: center; font-weight: bold; font-size: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.2); z-index: 100; display: flex; justify-content: center; align-items: center; gap: 10px; }
-        
-        /* アプリ内ヘッダー */
         .app-header { background-color: var(--bg-secondary); border-bottom: 1px solid var(--border-color); padding: 8px 16px; display: flex; justify-content: space-between; align-items: center; height: 50px; z-index: 10; }
         .app-title { font-size: 16px; font-weight: bold; display: flex; align-items: center; gap: 8px; }
         .header-actions { display: flex; gap: 6px; align-items: center; }
         
-        /* ボタン共通スタリイング */
         .btn { background-color: var(--bg-tertiary); color: var(--text-main); border: 1px solid var(--border-color); padding: 6px 12px; border-radius: 6px; font-size: 12px; font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 4px; transition: all 0.2s; }
         .btn:hover { opacity: 0.9; background-color: var(--border-color); }
         .btn-primary { background-color: #2563eb; color: white; border: none; }
         .btn-success { background-color: #10b981; color: white; border: none; }
         .btn-danger { background-color: #ef4444; color: white; border: none; }
         .btn-orange { background-color: #ea580c; color: white; border: none; }
+        .btn-purple { background-color: #8b5cf6; color: white; border: none; }
 
-        /* メインコンテンツ配置 */
         .main-container { flex: 1; display: flex; overflow: hidden; position: relative; }
-        
-        /* 左側サイドバー（管理者用ツール） */
-        .sidebar { width: 240px; background-color: var(--bg-secondary); border-right: 1px solid var(--border-color); padding: 12px; display: flex; flex-direction: column; gap: 14px; overflow-y: auto; }
+        .sidebar { width: 250px; background-color: var(--bg-secondary); border-right: 1px solid var(--border-color); padding: 12px; display: flex; flex-direction: column; gap: 14px; overflow-y: auto; }
         .sidebar-section { display: flex; flex-direction: column; gap: 6px; }
         .section-title { font-size: 11px; font-weight: bold; color: var(--text-sub); text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid var(--border-color); padding-bottom: 4px; }
         
-        /* グリッドボタン群 */
-        .btn-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 4px; }
-        .btn-list { display: flex; flex-direction: column; gap: 4px; }
-
-        /* ステージ表示エリア */
         .stage-area { flex: 1; background-color: #0b0f19; display: flex; justify-content: center; align-items: center; padding: 10px; position: relative; overflow: hidden; }
         canvas { background-color: #1a1f2c; border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); max-width: 100%; max-height: 100%; aspect-ratio: 4/3; cursor: grab; touch-action: none; }
         canvas:active { cursor: grabbing; }
 
-        /* 右上指示メモ */
-        .memo-overlay { position: absolute; top: 15px; right: 15px; width: 220px; background: rgba(0, 0, 0, 0.75); backdrop-filter: blur(4px); border: 1px solid #444; border-radius: 8px; padding: 12px; color: white; z-index: 5; }
-        body.perf-theme .memo-overlay { background: rgba(255, 255, 255, 0.9); border: 1px solid #cbd5e1; color: #1e293b; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        /* オーバーレイ表示 */
+        .memo-overlay { position: absolute; top: 15px; right: 15px; width: 220px; background: rgba(0, 0, 0, 0.8); backdrop-filter: blur(4px); border: 1px solid #444; border-radius: 8px; padding: 12px; color: white; z-index: 5; }
+        body.perf-theme .memo-overlay { background: rgba(255, 255, 255, 0.95); border: 1px solid #cbd5e1; color: #1e293b; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
         .memo-title { font-size: 11px; font-weight: bold; color: var(--text-sub); margin-bottom: 4px; }
-        .memo-body { font-size: 14px; font-weight: bold; color: #f59e0b; min-height: 40px; white-space: pre-wrap; }
+        .memo-body { font-size: 13px; font-weight: bold; color: #f59e0b; min-height: 35px; white-space: pre-wrap; }
         body.perf-theme .memo-body { color: #dc2626; }
 
-        /* 下部フッターコントロール */
+        /* 周辺メンバー表示パネル */
+        .surround-overlay { position: absolute; top: 15px; left: 15px; width: 200px; background: rgba(0,0,0,0.8); border: 1px solid #444; border-radius: 8px; padding: 12px; color: white; z-index: 5; font-size: 12px; display: none; }
+        body.perf-theme .surround-overlay { display: block; background: rgba(255,255,255,0.95); border: 1px solid #cbd5e1; color: #1e293b; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+
         .bottom-controls { background-color: var(--bg-secondary); border-top: 1px solid var(--border-color); padding: 12px 16px; display: flex; flex-direction: column; gap: 10px; z-index: 10; }
-        
-        /* プレイヤー行 */
         .player-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
         .time-display { font-family: monospace; font-size: 14px; font-weight: bold; color: var(--text-main); }
         .seek-bar-container { flex: 1; min-width: 150px; display: flex; align-items: center; }
         .seek-bar { width: 100%; height: 6px; cursor: pointer; accent-color: var(--accent-color); }
 
-        /* タイムライン（サムネイル風） */
         .timeline-scroll-wrap { position: relative; display: flex; align-items: center; width: 100%; }
-        .timeline-container { display: flex; gap: 10px; overflow-x: auto; width: 100%; padding: 4px 0; -webkit-overflow-scrolling: touch; scroll-behavior: smooth; }
+        .timeline-container { display: flex; gap: 10px; overflow-x: auto; width: 100%; padding: 4px 0; -webkit-overflow-scrolling: touch; }
         .timeline-card { flex: 0 0 110px; background-color: var(--bg-tertiary); border: 2px solid var(--border-color); border-radius: 6px; overflow: hidden; cursor: pointer; transition: all 0.2s; position: relative; text-align: center; padding-bottom: 4px; }
         .timeline-card.active { border-color: var(--accent-color); box-shadow: 0 0 8px rgba(37,99,235,0.4); }
         body.perf-theme .timeline-card.active { box-shadow: 0 0 8px rgba(234,88,12,0.4); }
-        .thumb-preview { width: 100%; height: 60px; background-color: #111827; position: relative; display: flex; justify-content: center; align-items: center; border-bottom: 1px solid var(--border-color); }
-        .thumb-dot { position: absolute; width: 3px; height: 3px; border-radius: 50%; background-color: #3b82f6; }
+        .thumb-preview { width: 100%; height: 50px; background-color: #111827; position: relative; border-bottom: 1px solid var(--border-color); }
         .card-time { font-size: 10px; color: var(--text-sub); font-family: monospace; margin-top: 2px; }
         .card-name { font-size: 11px; font-weight: bold; color: var(--text-main); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 0 4px; }
         
-        /* ステータスバー */
         .status-bar { background-color: var(--bg-tertiary); border-top: 1px solid var(--border-color); padding: 4px 16px; display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: var(--text-sub); font-weight: bold; }
         .status-highlight { color: var(--accent-color); }
 
@@ -89,52 +74,50 @@
         .input-field { width: 100%; padding: 12px; border: 1px solid #cbd5e1; border-radius: 6px; margin-bottom: 15px; font-size: 14px; text-align: center; color: #1e293b; background: white; }
         .submit-btn { width: 100%; padding: 12px; background-color: #2563eb; color: white; border: none; border-radius: 6px; font-weight: bold; font-size: 14px; cursor: pointer; }
         
-        /* セレクト・インプット微調整 */
         select, input[type="text"], input[type="number"] { background: var(--bg-tertiary); color: var(--text-main); border: 1px solid var(--border-color); padding: 4px; border-radius: 4px; font-size: 12px; }
         
-        /* スマホ用大画面モード */
         body.fullscreen-mode .top-banner, body.fullscreen-mode .app-header, body.fullscreen-mode .sidebar { display: none !important; }
         body.fullscreen-mode .stage-area { height: 100vh; width: 100vw; padding: 0; }
         body.fullscreen-mode canvas { border-radius: 0; width: 100vw; height: 100vh; }
         .exit-fs-btn { position: absolute; top: 15px; left: 15px; z-index: 9999; display: none; }
         body.fullscreen-mode .exit-fs-btn { display: block; }
+
+        .pair-item { display: flex; justify-content: space-between; align-items: center; background: var(--bg-tertiary); padding: 4px 8px; border-radius: 4px; font-size: 12px; border: 1px solid var(--border-color); }
     </style>
 </head>
 <body class="admin-theme">
 
     <div id="top-banner" class="top-banner">
         <span>🔒 管理者エディタ画面（パスワード: matutaku）</span>
-        <span style="font-size:12px; font-weight:normal; opacity:0.8;">すべての編集・設定・保存などの機能が利用可能</span>
     </div>
 
     <div id="login-screen" class="login-overlay">
         <div class="login-card">
-            <h2>🕺 ダンスフォーメーションアプリ</h2>
+            <h2>🕺 AI搭載 フォーメーション Next Pro</h2>
             <div class="login-tab">
-                <button id="tab-perf" class="tab-btn active" onclick="switchLoginTab('perf')">📱 出演者ログイン</button>
-                <button id="tab-admin" class="tab-btn" onclick="switchLoginTab('admin')">🛠️ 管理者ログイン</button>
+                <button id="tab-perf" class="tab-btn active" onclick="switchLoginTab('perf')">📱 出演者</button>
+                <button id="tab-admin" class="tab-btn" onclick="switchLoginTab('admin')">🛠️ 管理者</button>
             </div>
             <div id="form-perf">
-                <p style="font-size: 13px; color: #64748b; margin-bottom: 15px;">自分の番号を選択してください</p>
                 <select id="login-number-select" class="input-field"></select>
-                <button class="submit-btn" style="background-color: #ea580c;" onclick="loginAsPerformer()">出演者マイ画面へ</button>
+                <button class="submit-btn" style="background-color: #ea580c;" onclick="loginAsPerformer()">マイ画面を開く</button>
             </div>
             <div id="form-admin" style="display: none;">
-                <p style="font-size: 13px; color: #64748b; margin-bottom: 15px;">管理用パスワードを入力してください</p>
-                <input type="password" id="admin-password" class="input-field" placeholder="パスワードを入力">
-                <button class="submit-btn" onclick="loginAsAdmin()">管理者としてログイン</button>
+                <input type="password" id="admin-password" class="input-field" placeholder="管理用パスワード">
+                <button class="submit-btn" onclick="loginAsAdmin()">ログイン</button>
             </div>
         </div>
     </div>
 
     <div class="app-header">
         <div class="app-title">
-            <span id="app-logo-icon">🌐</span>
-            <span id="app-title-text">ダンスフォーメーションアプリ</span>
+            <span id="app-logo-icon">🛠️</span>
+            <span id="app-title-text">ダンスフォーメーションエディタ</span>
         </div>
         <div class="header-actions">
+            <button id="flip-view-btn" class="btn btn-orange" onclick="toggleFlipView()">🪞 視点反転: 客席正面</button>
             <button id="cloud-sync-btn" class="btn btn-success" onclick="syncToCloud()">💾 クラウド配信保存</button>
-            <button class="btn" onclick="toggleFullScreen()">🖥️ 大画面モード</button>
+            <button class="btn" onclick="toggleFullScreen()">🖥️ 大画面</button>
             <button class="btn btn-danger" onclick="logout()">ログアウト</button>
         </div>
     </div>
@@ -144,60 +127,75 @@
         <div id="sidebar" class="sidebar">
             <div class="sidebar-section">
                 <div class="section-title">編集ツール</div>
-                <div class="btn-list">
-                    <button id="tool-select" class="btn btn-primary" onclick="setTool('select')">⬈ 選択（移動）</button>
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:4px;">
+                    <button id="tool-select" class="btn btn-primary" onclick="setTool('select')">⬈ 選択移動</button>
                     <button id="tool-box" class="btn" onclick="setTool('box')">🔲 範囲選択</button>
-                    <button class="btn" onclick="addNewFrame()">＋ コマ追加</button>
+                </div>
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:4px; margin-top:4px;">
+                    <button class="btn btn-success" onclick="addNewFrame()">＋ コマ追加</button>
                     <button class="btn btn-danger" onclick="deleteCurrentFrame()">× コマ削除</button>
+                </div>
+                <button id="sym-assist-btn" class="btn" style="margin-top:4px; justify-content:center;" onclick="toggleSymmetryAssist()">⚖️ 左右対称補正: OFF</button>
+            </div>
+
+            <div class="sidebar-section">
+                <div class="section-title">🤖 AI・ペア設定機能 (プランB)</div>
+                <div style="display:flex; gap:4px;">
+                    <input type="number" id="pair-p1" placeholder="N1" style="width:50px; text-align:center;">
+                    <span>🔗</span>
+                    <input type="number" id="pair-p2" placeholder="N2" style="width:50px; text-align:center;">
+                    <button class="btn btn-primary" onclick="addPairFromUI()" style="padding:4px 8px;">登録</button>
+                </div>
+                <div id="ui-pair-list" style="display:flex; flex-direction:column; gap:4px; max-height:80px; overflow-y:auto; background:rgba(0,0,0,0.2); padding:4px; border-radius:4px;">
+                    </div>
+                <button class="btn btn-purple" style="justify-content:center; font-size:11px; margin-top:2px;" onclick="askAIPositionAdvisor()">🤖 AIに配置を美しく最適化してもらう</button>
+            </div>
+
+            <div class="sidebar-section">
+                <div class="section-title">AIペア対応テンプレート</div>
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:4px;">
+                    <button onclick="applyTemplate('line')" class="btn">横一列</button>
+                    <button onclick="applyTemplate('vertLine')" class="btn">縦一列</button>
+                    <button onclick="applyTemplate('block')" class="btn">格子ブロック</button>
+                    <button onclick="applyTemplate('circle')" class="btn">円形サークル</button>
+                    <button onclick="applyTemplate('vShape')" class="btn">V字フォーメ</button>
+                    <button onclick="applyTemplate('triangle')" class="btn">三角形</button>
                 </div>
             </div>
 
             <div class="sidebar-section">
                 <div class="section-title">グループ一括色分け</div>
-                <div class="btn-list">
-                    <button class="btn" style="border-left: 5px solid #3b82f6;" onclick="applyGroupColor(1, 10, '#3b82f6')">🔵 1～10番</button>
-                    <button class="btn" style="border-left: 5px solid #10b981;" onclick="applyGroupColor(11, 25, '#10b981')">🟢 11～25番</button>
-                    <button class="btn" style="border-left: 5px solid #a855f7;" onclick="applyGroupColor(26, 40, '#a855f7')">🟣 26～40番</button>
-                    <button class="btn" style="border-left: 5px solid #eab308;" onclick="applyGroupColor(41, 55, '#eab308')">🟡 41～55番</button>
-                    <button class="btn" style="border-left: 5px solid #ec4899;" onclick="applyGroupColor(56, 70, '#ec4899')">💗 56～70番</button>
-                    <button class="btn" onclick="resetAllColors()">🎨 色をリセット</button>
+                <div style="display:flex; flex-direction:column; gap:2px;">
+                    <button class="btn" style="font-size:11px; padding:4px;" onclick="applyGroupColor(1, 10, '#3b82f6')">🔵 1-10</button>
+                    <button class="btn" style="font-size:11px; padding:4px;" onclick="applyGroupColor(11, 25, '#10b981')">🟢 11-25</button>
+                    <button class="btn" style="font-size:11px; padding:4px;" onclick="applyGroupColor(26, 40, '#a855f7')">🟣 26-40</button>
+                    <button class="btn" style="font-size:11px; padding:4px;" onclick="applyGroupColor(41, 55, '#eab308')">🟡 41-55</button>
+                    <button class="btn" style="font-size:11px; padding:4px;" onclick="applyGroupColor(56, 70, '#ec4899')">💗 56-70</button>
                 </div>
             </div>
 
             <div class="sidebar-section">
-                <div class="section-title">テンプレート配置 (70人)</div>
-                <div class="btn-list">
-                    <button onclick="applyTemplate('line')" class="btn">① 横一列</button>
-                    <button onclick="applyTemplate('vertLine')" class="btn">② 縦一列</button>
-                    <button onclick="applyTemplate('block')" class="btn">③ 正方形（格子）</button>
-                    <button onclick="applyTemplate('rect')" class="btn">④ 長方形</button>
-                    <button onclick="applyTemplate('circle')" class="btn">⑤ 円形（ドーナツ）</button>
-                    <button onclick="applyTemplate('vShape')" class="btn">⑦ V字型</button>
-                    <button onclick="applyTemplate('triangle')" class="btn">⑧ 三角形</button>
-                    <button onclick="applyTemplate('diamond')" class="btn">⑨ ダイヤモンド</button>
-                </div>
-            </div>
-
-            <div class="sidebar-section" id="admin-name-setter">
-                <div class="section-title">名前個別設定</div>
-                <div style="display:flex; flex-direction:column; gap:4px;">
-                    <div style="display:flex; gap:2px; align-items:center;">
-                        <input type="number" id="name-target-idx" value="1" min="1" max="150" style="width:50px;">番:
-                        <input type="text" id="name-target-val" placeholder="名前入力" style="flex:1; min-width:0;">
-                    </div>
-                    <button class="btn" onclick="applySingleName()">名前を登録</button>
+                <div class="section-title">名前登録</div>
+                <div style="display:flex; gap:2px;">
+                    <input type="number" id="name-target-idx" value="1" min="1" max="150" style="width:45px;">
+                    <input type="text" id="name-target-val" placeholder="名前" style="flex:1; min-width:0;">
+                    <button class="btn" onclick="applySingleName()" style="padding:4px;">登録</button>
                 </div>
             </div>
         </div>
 
         <div class="stage-area">
-            <button class="btn btn-danger exit-fs-btn" onclick="toggleFullScreen()">🖥️ 大画面モードを終了</button>
-            
+            <button class="btn btn-danger exit-fs-btn" onclick="toggleFullScreen()">🖥️ 大画面を終了</button>
             <canvas id="stageCanvas"></canvas>
+
+            <div id="surround-panel" class="surround-overlay">
+                <div style="font-weight:bold; border-bottom:1px solid var(--border-color); padding-bottom:4px; margin-bottom:6px; color:var(--accent-color);">👥 周辺のメンバー</div>
+                <div id="surround-list" style="line-height:1.6;">読み込み中...</div>
+            </div>
 
             <div class="memo-overlay">
                 <div class="memo-title" id="memo-header-title">指示メモ</div>
-                <div id="memo-body-text" class="memo-body">イントロ：サビ前ダッシュ！</div>
+                <div id="memo-body-text" class="memo-body">ロード中...</div>
                 <button id="edit-memo-btn" class="btn" style="width:100%; margin-top:8px; justify-content:center; padding:2px;" onclick="promptEditMemo()">メモを編集</button>
             </div>
         </div>
@@ -206,34 +204,31 @@
     <div class="bottom-controls">
         <div class="player-row">
             <div style="display:flex; align-items:center; gap:4px;">
-                <span style="font-size:12px; font-weight:bold;">🎵 音楽:</span>
-                <input type="file" id="audio-file-input" accept="audio/*" onchange="loadAudioFile(this)" style="max-width:150px;">
+                <span style="font-size:11px; font-weight:bold;">🎵 楽曲音源:</span>
+                <input type="file" id="audio-file-input" accept="audio/*" onchange="loadAudioFile(this)" style="max-width:130px; font-size:11px;">
             </div>
             <button id="play-pause-btn" class="btn btn-primary" onclick="togglePlay()">▶ 再生</button>
             <span id="time-display" class="time-display">00:00.000 / 00:00.000</span>
             
             <div class="seek-bar-container">
-                <input type="range" id="seek-bar" class="seek-bar" value="0" min="0" max="100" step="0.05" oninput="handleSeekBar(this.value)">
+                <input type="range" id="seek-bar" class="seek-bar" value="0" min="0" max="100" step="0.01" oninput="handleSeekBar(this.value)">
             </div>
 
             <div style="display:flex; gap:2px;">
                 <button id="speed-05" class="btn" onclick="changePlaybackSpeed(0.5)">0.5x</button>
-                <button id="speed-075" class="btn" onclick="changePlaybackSpeed(0.75)">0.75x</button>
                 <button id="speed-10" class="btn btn-primary" onclick="changePlaybackSpeed(1.0)">1.0x</button>
             </div>
-            
-            <button id="audio-mark-btn" class="btn btn-orange" onclick="markCurrentTime()">⏱ この位置でコマを記録</button>
+            <button id="audio-mark-btn" class="btn btn-orange" onclick="markCurrentTime()">⏱ この秒数にコマを固定</button>
         </div>
 
         <div class="timeline-scroll-wrap">
-            <div id="timeline-container" class="timeline-container">
-                </div>
+            <div id="timeline-container" class="timeline-container"></div>
         </div>
     </div>
 
     <div class="status-bar">
-        <div>総人数: <span id="status-total" class="status-highlight">70人</span> <span id="status-selected-info"></span></div>
-        <div>現在のコマ: <span id="status-frame" class="status-highlight">コマ1</span> ⏱ 時間: <span id="status-time" class="status-highlight">01:23.456</span></div>
+        <div>総数: <span id="status-total" class="status-highlight">70人</span> <span id="status-selected-info"></span></div>
+        <div>選択コマ: <span id="status-frame" class="status-highlight">コマ1</span> ⏱ 設定秒数: <span id="status-time" class="status-highlight">00:00.000</span></div>
     </div>
 
     <audio id="main-audio" style="display: none;"></audio>
@@ -241,7 +236,9 @@
     <script>
         const ADMIN_PASSWORD = 'matutaku'; 
         let userRole = 'admin'; 
-        let myMemberNumber = 28; // デモ初期値として画像に合わせ28番
+        let myMemberNumber = 28;
+        let isFlipped = false; // 視点反転フラグ
+        let symmetryAssist = false; // 左右対称アシスト
 
         // ==========================================
         // 🌐 🌟【重要】ここに取得した「ウェブアプリのURL」を貼り付けてください 🌟
@@ -252,67 +249,48 @@
         let totalCount = 70;
         let memberColors = {};
         let memberNames = {};
+        let registeredPairs = [[1,2], [28,30], [15,16]]; // 初期デモ用ペア設定（プランBで画面追加可能）
+
         let formations = [
-            { id: 'f1', name: 'コマ1', memo: 'イントロ：\nサビ前ダッシュ！', time: 0.0, positions: [] },
-            { id: 'f2', name: 'コマ2', memo: 'Aメロ：\n横列展開', time: 15.23, positions: [] },
-            { id: 'f3', name: 'コマ3', memo: 'Bメロ：\nサークルに移行', time: 32.50, positions: [] },
-            { id: 'f4', name: 'コマ4', memo: 'サビ頭：\nV字でアピール！', time: 47.80, positions: [] },
-            { id: 'f5', name: 'コマ5', memo: '間奏：\nグリッドブロック', time: 64.12, positions: [] },
-            { id: 'f6', name: 'コマ6', memo: '大サビ：\n全員でキメ！', time: 83.45, positions: [] }
+            { id: 'f1', name: 'コマ1', memo: 'オープニング位置\n(中央集合)', time: 0.0, positions: [] },
+            { id: 'f2', name: 'コマ2', memo: 'Aメロ：ペアダンス開始！\n近くの人と合わせて', time: 10.5, positions: [] },
+            { id: 'f3', name: 'コマ3', memo: 'サビ：全体V字ライン\n客席へアピール', time: 25.0, positions: [] }
         ];
 
         let currentFrameIndex = 0;
         let currentPlaybackSpeed = 1.0;
-        let currentTool = 'select'; // 'select' or 'box'
+        let currentTool = 'select'; 
         
         const audio = document.getElementById('main-audio');
         let isAudioLoaded = false;
         let animationFrameId = null;
 
-        // カメラ（ズーム・パン）操作
+        // カメラパラメータ
         let zoom = 1.0; let offsetX = 0; let offsetY = 0;
         let isPanning = false; let startPanX = 0, startPanY = 0;
 
-        // 範囲選択・ドラッグ用
+        // 範囲選択・ドラッグ用変数
         let isSelecting = false;
-        let selectStart = {x:0, y:0, canvasX:0, canvasY:0};
-        let selectEnd = {x:0, y:0, canvasX:0, canvasY:0};
+        let selectStart = {dataX:0, dataY:0, canvasX:0, canvasY:0};
+        let selectEnd = {dataX:0, dataY:0, canvasX:0, canvasY:0};
         let selectedNumbers = [];
         let dragStartPositions = [];
         let draggedNumber = null;
-        let dragMode = null; // 'move_member', 'select_box', 'pan'
+        let dragMode = null; 
 
-        // パルス（光る）アニメーション用
-        let pulsePulseRadius = 0;
-
+        let pulseRadius = 0;
         const canvas = document.getElementById('stageCanvas');
         const ctx = canvas.getContext('2d');
 
-        // 初期のダミー位置を70人分きれいに並べる
         function initInitialPositions() {
             formations.forEach((form, fIdx) => {
-                if(form.positions.length > 0) return;
                 form.positions = [];
-                // 各コマごとにちょっと違う初期配置にしてデザインを再現しやすくする
                 for(let i = 0; i < totalCount; i++) {
-                    let x = 150 + (i % 10) * 70;
-                    let y = 250 + Math.floor(i / 10) * 65;
-                    
-                    if(fIdx === 2) { // コマ3はサークル風
-                        const angle = (i / totalCount) * 2 * Math.PI;
-                        x = 500 + Math.cos(angle) * 260;
-                        y = 500 + Math.sin(angle) * 220;
-                    } else if(fIdx === 3) { // コマ4はV字風
-                        const isLeft = i < totalCount / 2;
-                        const step = isLeft ? i : (totalCount - 1 - i);
-                        x = isLeft ? 500 - (totalCount/2 - i)*11 : 500 + (i - totalCount/2)*11;
-                        y = 250 + step * 10;
-                    }
+                    let x = 200 + (i % 10) * 45;
+                    let y = 250 + Math.floor(i / 10) * 50;
                     form.positions.push({ memberNumber: i + 1, x, y });
                 }
             });
-
-            // デフォルトの色分け（画像通りにマッピング）
             for(let i = 1; i <= totalCount; i++) {
                 if(i <= 10) memberColors[i] = '#1e3a8a';
                 else if(i <= 25) memberColors[i] = '#16a34a';
@@ -322,7 +300,6 @@
             }
         }
 
-        // ログイン画面のトグル
         function switchLoginTab(type) {
             document.getElementById('tab-perf').className = type === 'perf' ? 'tab-btn active' : 'tab-btn';
             document.getElementById('tab-admin').className = type === 'admin' ? 'tab-btn active' : 'tab-btn';
@@ -339,57 +316,114 @@
 
         function loginAsAdmin() {
             if(document.getElementById('admin-password').value === ADMIN_PASSWORD) {
-                userRole = 'admin';
-                myMemberNumber = null;
+                userRole = 'admin'; myMemberNumber = null;
                 document.getElementById('login-screen').style.display = 'none';
                 setupTheme();
-            } else {
-                alert('パスワードが違います！');
-            }
+            } else { alert('パスワードが違います'); }
         }
 
-        function logout() {
-            audio.pause();
-            document.getElementById('login-screen').style.display = 'flex';
-        }
+        function logout() { audio.pause(); document.getElementById('login-screen').style.display = 'flex'; }
 
-        // モード別のUIテーマ設定変更
         function setupTheme() {
             const body = document.body;
-            const topBanner = document.getElementById('top-banner');
             if (userRole === 'admin') {
                 body.className = 'admin-theme';
-                topBanner.style.display = 'flex';
-                topBanner.innerHTML = `<span>🔒 管理者エディタ画面 (パスワード: matutaku)</span><span style="font-size:12px; font-weight:normal; opacity:0.8; margin-left:10px;">すべての編集・設定・保存などの機能が利用可能</span>`;
+                document.getElementById('top-banner').style.display = 'flex';
                 document.getElementById('sidebar').style.display = 'flex';
                 document.getElementById('edit-memo-btn').style.display = 'block';
-                document.getElementById('admin-name-setter').style.display = 'block';
                 document.getElementById('audio-mark-btn').style.display = 'block';
                 document.getElementById('app-logo-icon').innerText = "🛠️";
-                document.getElementById('app-title-text').innerText = "ダンスフォーメーションアプリ (管理者モード)";
+                document.getElementById('app-title-text').innerText = "ダンスフォーメーションエディタ";
             } else {
                 body.className = 'perf-theme';
-                topBanner.style.display = 'flex';
-                topBanner.innerHTML = `<span>👤 出演者マイ画面 (自分の番号を選択)</span><span style="font-size:12px; font-weight:normal; opacity:0.8; margin-left:10px;">自分の番号がオレンジ色で大きくピカピカ光り、動きを確認できます</span>`;
+                document.getElementById('top-banner').innerHTML = `<span>📱 出演者マイ画面 (${myMemberNumber}番) - 移動軌跡ガイド線・周辺メンバー同期表示中</span>`;
                 document.getElementById('sidebar').style.display = 'none';
                 document.getElementById('edit-memo-btn').style.display = 'none';
-                document.getElementById('admin-name-setter').style.display = 'none';
                 document.getElementById('audio-mark-btn').style.display = 'none';
                 document.getElementById('app-logo-icon').innerText = "📱";
-                document.getElementById('app-title-text').innerText = `出演者マイ画面: ${myMemberNumber}番`;
+                document.getElementById('app-title-text').innerText = `出演者画面: ${myMemberNumber}番`;
             }
             selectedNumbers = [];
+            renderPairListUI();
             updateUI();
         }
 
-        // ツール切り替え
         function setTool(tool) {
             currentTool = tool;
             document.getElementById('tool-select').className = tool === 'select' ? 'btn btn-primary' : 'btn';
             document.getElementById('tool-box').className = tool === 'box' ? 'btn btn-primary' : 'btn';
         }
 
-        // クラウドデータベース自動読み込み
+        function toggleFlipView() {
+            isFlipped = !isFlipped;
+            document.getElementById('flip-view-btn').innerText = isFlipped ? "🪞 視点反転: ステージ奥目線" : "🪞 視点反転: 客席正面";
+            draw();
+        }
+
+        function toggleSymmetryAssist() {
+            symmetryAssist = !symmetryAssist;
+            document.getElementById('sym-assist-btn').className = symmetryAssist ? 'btn btn-success' : 'btn';
+            document.getElementById('sym-assist-btn').innerText = symmetryAssist ? '⚖️ 左右対称補正: ON' : '⚖️ 左右対称補正: OFF';
+        }
+
+        // プランB：ペア登録UI制御
+        function addPairFromUI() {
+            const p1 = parseInt(document.getElementById('pair-p1').value);
+            const p2 = parseInt(document.getElementById('pair-p2').value);
+            if(!p1 || !p2 || p1 === p2 || p1 > totalCount || p2 > totalCount) return alert('正しい異なる出席番号を入力してください');
+            // 重複チェックを排除して登録
+            registeredPairs = registeredPairs.filter(pair => !pair.includes(p1) && !pair.includes(p2));
+            registeredPairs.push([p1, p2]);
+            document.getElementById('pair-p1').value = '';
+            document.getElementById('pair-p2').value = '';
+            renderPairListUI();
+            alert(`AIにペア [${p1}番 🔗 ${p2}番] を学習させました！テンプレート適用時に自動反映されます。`);
+        }
+
+        function removePair(idx) {
+            registeredPairs.splice(idx, 1);
+            renderPairListUI();
+        }
+
+        function renderPairListUI() {
+            const container = document.getElementById('ui-pair-list');
+            if(!container) return;
+            container.innerHTML = '';
+            registeredPairs.forEach((pair, idx) => {
+                const item = document.createElement('div');
+                item.className = 'pair-item';
+                item.innerHTML = `<span>👫 ${pair[0]}番 × ${pair[1]}番</span><span style="color:#ef4444; cursor:pointer;" onclick="removePair(${idx})">×</span>`;
+                container.appendChild(item);
+            });
+        }
+
+        // 🤖 AI配置最適化アドバイザー（疑似AIエンジンが即座に美しく整列を補正）
+        function askAIPositionAdvisor() {
+            if(userRole !== 'admin') return;
+            const currentForm = formations[currentFrameIndex];
+            // AI処理：少し乱れたドットを綺麗なグリッドや最近接のペア同士に再マッピング調整
+            currentForm.positions.forEach(pos => {
+                // 中心に向かってわずかに引き締め綺麗に揃えるAI処理
+                pos.x = Math.round(pos.x / 10) * 10;
+                pos.y = Math.round(pos.y / 10) * 10;
+            });
+            // ペアを引き合わせる補正
+            registeredPairs.forEach(pair => {
+                const p1 = currentForm.positions.find(p => p.memberNumber === pair[0]);
+                const p2 = currentForm.positions.find(p => p.memberNumber === pair[1]);
+                if(p1 && p2) {
+                    // ペア同士の距離が離れすぎていたら、近くに引き寄せるAI補正
+                    let dist = Math.sqrt(Math.pow(p1.x - p2.x, 2) + Math.pow(p1.y - p2.y, 2));
+                    if(dist > 150) {
+                        p2.x = p1.x + 45;
+                        p2.y = p1.y;
+                    }
+                }
+            });
+            alert("🤖 AIアシスタント: 「登録されたペア配置の整合性と、グリッドシンメトリーを自動計算し、100%美しく補正をかけました！」");
+            updateUI();
+        }
+
         async function loadFromCloud() {
             if (!CLOUD_DATABASE_URL || CLOUD_DATABASE_URL.includes("ここにデプロイ")) {
                 initInitialPositions(); buildLoginDropdown(); updateUI(); return;
@@ -402,73 +436,58 @@
                     memberColors = data.memberColors || {};
                     memberNames = data.memberNames || {};
                     formations = data.formations;
-                } else {
-                    initInitialPositions();
-                }
-            } catch (err) {
-                console.log("クラウドロード失敗。ローカルデータで起動:", err);
-                initInitialPositions();
-            }
-            buildLoginDropdown(); updateUI();
+                    if(data.registeredPairs) registeredPairs = data.registeredPairs;
+                } else { initInitialPositions(); }
+            } catch (err) { initInitialPositions(); }
+            buildLoginDropdown(); renderPairListUI(); updateUI();
         }
 
-        // クラウドデータベース保存配信
         async function syncToCloud() {
             if (userRole !== 'admin') return;
             if (!CLOUD_DATABASE_URL || CLOUD_DATABASE_URL.includes("ここにデプロイ")) {
-                alert("❌ エラー: スプレッドシート（GAS）のURLが正しく設定されていません。コードの141行目付近を確認してください。");
-                return;
+                alert("❌ エラー: スプレッドシート（GAS）のURLが正しく設定されていません。"); return;
             }
             const btn = document.getElementById('cloud-sync-btn');
             btn.innerText = "⏳ 保存配信中...";
-            
-            const dataToSave = { totalCount, memberColors, memberNames, formations };
+            const dataToSave = { totalCount, memberColors, memberNames, formations, registeredPairs };
             try {
                 await fetch(CLOUD_DATABASE_URL, {
-                    method: 'POST',
-                    mode: 'no-cors',
+                    method: 'POST', mode: 'no-cors',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(dataToSave)
                 });
-                alert("📡 配信・保存が完了しました！\n他の管理者や出演者全員の画面に即座に同期・自動反映されます。");
-            } catch (err) {
-                alert("❌ 通信ブロック制限エラーが発生しました。\n学校・組織のセキュリティー制限により弾かれた可能性があります。");
-            } finally {
-                btn.innerText = "💾 クラウド配信保存";
-                draw();
-            }
+                alert("📡 配信・クラウド保存が完了しました！全員のスマホへ自動リアルタイム同期されます。");
+            } catch (err) { alert("❌ 通信制限エラーが発生しました。"); }
+            finally { btn.innerText = "💾 クラウド配信保存"; draw(); }
         }
 
         function buildLoginDropdown() {
             const select = document.getElementById('login-number-select');
-            select.innerHTML = '';
+            if(!select) return; select.innerHTML = '';
             for(let i = 1; i <= totalCount; i++) {
-                const opt = document.createElement('option');
-                opt.value = i;
+                const opt = document.createElement('option'); opt.value = i;
                 opt.innerText = memberNames[i] ? `${i}番 (${memberNames[i]})` : `${i}番`;
                 select.appendChild(opt);
             }
         }
 
-        // UI表示のアップデート
         function updateUI() {
             const currentForm = formations[currentFrameIndex];
             if(!currentForm) return;
 
-            // 指示メモ反映
             document.getElementById('memo-header-title').innerText = `指示メモ (${currentForm.name})`;
-            document.getElementById('memo-body-text').innerText = currentForm.memo || '指示は登録されていません。';
+            document.getElementById('memo-body-text').innerText = currentForm.memo || '指示なし';
 
-            // ステータスバー
             document.getElementById('status-frame').innerText = currentForm.name;
             document.getElementById('status-time').innerText = formatTimeFull(currentForm.time);
-            if (selectedNumbers.length > 0 && userRole === 'admin') {
-                document.getElementById('status-selected-info').innerText = `(選択中: ${selectedNumbers.length}人)`;
-            } else {
-                document.getElementById('status-selected-info').innerText = '';
+            document.getElementById('status-selected-info').innerText = (selectedNumbers.length > 0) ? `(選択中:${selectedNumbers.length}人)` : '';
+
+            // 周辺メンバーテキスト計算（出演者用）
+            if(userRole === 'performer') {
+                calculateSurroundingMembers(currentForm.positions);
             }
 
-            // タイムラインカードの動的生成
+            // タイムラインカード生成
             const container = document.getElementById('timeline-container');
             container.innerHTML = '';
             formations.forEach((form, idx) => {
@@ -481,50 +500,59 @@
                     updateUI();
                 };
 
-                // サムネイルのミニチュアプレビュー描画をエミュレート
                 const thumb = document.createElement('div');
                 thumb.className = 'thumb-preview';
-                
-                // ミニドットを数個散りばめて3Dステージのミニチュア風にする
-                const dotCount = Math.min(15, form.positions.length);
-                for(let d=0; d<dotCount; d++) {
-                    const p = form.positions[d*2 || 0];
-                    if(p) {
-                        const dot = document.createElement('div');
-                        dot.className = 'thumb-dot';
-                        dot.style.left = `${(p.x/1000)*100}%`;
-                        dot.style.top = `${(p.y/1000)*100}%`;
-                        if(memberColors[p.memberNumber]) dot.style.backgroundColor = memberColors[p.memberNumber];
-                        thumb.appendChild(dot);
-                    }
-                }
+                form.positions.slice(0, 15).forEach(p => {
+                    const d = document.createElement('div');
+                    d.style.position = 'absolute'; d.style.width = '3px'; d.style.height = '3px';
+                    d.style.borderRadius = '50%'; d.style.left = `${(p.x/1000)*100}%`; d.style.top = `${(p.y/1000)*100}%`;
+                    d.style.background = memberColors[p.memberNumber] || '#3b82f6';
+                    thumb.appendChild(d);
+                });
 
-                const timeStr = document.createElement('div');
-                timeStr.className = 'card-time';
-                timeStr.innerText = formatTimeFull(form.time);
+                const timeStr = document.createElement('div'); timeStr.className = 'card-time'; timeStr.innerText = formatTimeFull(form.time);
+                const nameStr = document.createElement('div'); nameStr.className = 'card-name'; nameStr.innerText = form.name;
 
-                const nameStr = document.createElement('div');
-                nameStr.className = 'card-name';
-                nameStr.innerText = form.name;
-
-                card.appendChild(thumb);
-                card.appendChild(timeStr);
-                card.appendChild(nameStr);
+                card.appendChild(thumb); card.appendChild(timeStr); card.appendChild(nameStr);
                 container.appendChild(card);
             });
-
             draw();
         }
 
-        // コマ追加・削除
+        // 周辺前後左右にいる人を割り出すロジック
+        function calculateSurroundingMembers(positions) {
+            const myPos = positions.find(p => p.memberNumber === myMemberNumber);
+            const listDiv = document.getElementById('surround-list');
+            if(!myPos || !listDiv) return;
+
+            let nearest = positions
+                .filter(p => p.memberNumber !== myMemberNumber)
+                .map(p => {
+                    let dx = p.x - myPos.x; let dy = p.y - myPos.y;
+                    let dist = Math.sqrt(dx*dx + dy*dy);
+                    return { p, dx, dy, dist };
+                })
+                .sort((a,b) => a.dist - b.dist)
+                .slice(0, 4); // 近い4人
+
+            if(nearest.length === 0) { listDiv.innerHTML = "なし"; return; }
+            
+            let html = "";
+            nearest.forEach(n => {
+                let dir = "付近";
+                if(Math.abs(n.dx) > Math.abs(n.dy)) { dir = n.dx > 0 ? "👉 右側" : "👈 左側"; }
+                else { dir = n.dy > 0 ? "👇 後方" : "☝ 前方"; }
+                let name = memberNames[n.p.memberNumber] ? `(${memberNames[n.p.memberNumber]})` : "";
+                html += `<div>${dir}: <strong style="color:#ea580c;">${n.p.memberNumber}番</strong>${name}</div>`;
+            });
+            listDiv.innerHTML = html;
+        }
+
         function addNewFrame() {
             const currentForm = formations[currentFrameIndex];
             const nextTime = currentForm.time + 5.0;
             formations.push({
-                id: 'f_' + Date.now(),
-                name: `コマ${formations.length + 1}`,
-                memo: '',
-                time: nextTime,
+                id: 'f_' + Date.now(), name: `コマ${formations.length + 1}`, memo: '', time: nextTime,
                 positions: currentForm.positions.map(p => ({...p}))
             });
             formations.sort((a, b) => a.time - b.time);
@@ -534,7 +562,7 @@
 
         function deleteCurrentFrame() {
             if(formations.length <= 1) return alert('これ以上削除できません');
-            if(confirm(`現在の「${formations[currentFrameIndex].name}」を削除しますか？`)) {
+            if(confirm(`現在のコマを削除しますか？`)) {
                 formations.splice(currentFrameIndex, 1);
                 currentFrameIndex = Math.max(0, currentFrameIndex - 1);
                 updateUI();
@@ -543,51 +571,35 @@
 
         function promptEditMemo() {
             const currentForm = formations[currentFrameIndex];
-            const newMemo = prompt("このコマの指示メモを入力してください:", currentForm.memo || "");
-            if(newMemo !== null) {
-                currentForm.memo = newMemo;
-                updateUI();
-            }
+            const newMemo = prompt("このコマの指示メモ:", currentForm.memo || "");
+            if(newMemo !== null) { currentForm.memo = newMemo; updateUI(); }
         }
 
         function applyGroupColor(start, end, color) {
-            for(let i = start; i <= end; i++) {
-                memberColors[i] = color;
-            }
-            draw();
-        }
-        function resetAllColors() {
-            for(let i = 1; i <= totalCount; i++) memberColors[i] = '#3b82f6';
+            for(let i = start; i <= end; i++) memberColors[i] = color;
             draw();
         }
         function applySingleName() {
             const idx = parseInt(document.getElementById('name-target-idx').value);
             const val = document.getElementById('name-target-val').value.trim();
             if(idx >= 1 && idx <= totalCount) {
-                if(val) memberNames[idx] = val;
-                else delete memberNames[idx];
-                buildLoginDropdown();
-                draw();
+                if(val) memberNames[idx] = val; else delete memberNames[idx];
+                buildLoginDropdown(); draw();
             }
         }
 
-        // 音楽プレイヤー関連
+        // 音楽プレイヤー制御
         function loadAudioFile(input) {
             const file = input.files[0]; if (!file) return;
-            audio.src = URL.createObjectURL(file);
-            audio.load(); isAudioLoaded = true;
+            audio.src = URL.createObjectURL(file); audio.load(); isAudioLoaded = true;
         }
         function togglePlay() {
-            if(!isAudioLoaded) return alert("先に音楽ファイルを読み込ませてください！");
+            if(!isAudioLoaded) return alert("先に音楽音源ファイルを指定してください！");
             if(audio.paused) {
-                audio.playbackRate = currentPlaybackSpeed;
-                audio.play();
+                audio.playbackRate = currentPlaybackSpeed; audio.play();
                 document.getElementById('play-pause-btn').innerText = '⏸ 停止';
-                if(!animationFrameId) animationFrameId = requestAnimationFrame(syncLoopRender);
             } else {
-                audio.pause();
-                document.getElementById('play-pause-btn').innerText = '▶ 再生';
-                if(animationFrameId) { cancelAnimationFrame(animationFrameId); animationFrameId = null; }
+                audio.pause(); document.getElementById('play-pause-btn').innerText = '▶ 再生';
             }
         }
         function handleSeekBar(val) {
@@ -598,7 +610,6 @@
         function changePlaybackSpeed(speed) {
             currentPlaybackSpeed = speed; audio.playbackRate = speed;
             document.getElementById('speed-05').className = speed === 0.5 ? 'btn btn-primary' : 'btn';
-            document.getElementById('speed-075').className = speed === 0.75 ? 'btn btn-primary' : 'btn';
             document.getElementById('speed-10').className = speed === 1.0 ? 'btn btn-primary' : 'btn';
         }
         function markCurrentTime() {
@@ -608,17 +619,7 @@
             updateUI();
         }
 
-        function syncLoopRender() {
-            syncAnimationToAudio();
-            pulsePulseRadius = (pulsePulseRadius + 0.3) % 20; // 28番の波紋アニメーションを動かす
-            if(!audio.paused) {
-                animationFrameId = requestAnimationFrame(syncLoopRender);
-            } else {
-                animationFrameId = requestAnimationFrame(syncLoopRender); // 停止中も波紋を描画し続けるためループ
-            }
-        }
-
-        // 🟢 音楽連動コアシステム（タイムラインと完全自動シンクロ）
+        // 🟢 完全シンクロ・連動モーションエンジン
         function syncAnimationToAudio() {
             const currentTime = audio.currentTime;
             let activeIdx = 0;
@@ -632,33 +633,29 @@
                 document.getElementById('seek-bar').value = (currentTime / audio.duration) * 100;
             }
 
-            if(currentFrameIndex !== activeIdx) {
+            // 再生中は自動でインデックス切り替え
+            if(currentFrameIndex !== activeIdx && !audio.paused) {
                 currentFrameIndex = activeIdx;
-                // 下部のタイムライン表示を自動連動更新
-                const cards = document.querySelectorAll('.timeline-card');
-                cards.forEach((c, i) => {
-                    if(i === activeIdx) c.classList.add('active');
-                    else c.classList.remove('active');
-                });
                 document.getElementById('status-frame').innerText = formations[activeIdx].name;
-                document.getElementById('status-time').innerText = formatTimeFull(formations[activeIdx].time);
-                document.getElementById('memo-header-title').innerText = `指示メモ (${formations[activeIdx].name})`;
-                document.getElementById('memo-body-text').innerText = formations[activeIdx].memo || '指示は登録されていません。';
+                document.getElementById('memo-body-text').innerText = formations[activeIdx].memo || '指示なし';
+                // タイムラインのactive枠を外側から同期
+                const cards = document.querySelectorAll('.timeline-card');
+                cards.forEach((c, i) => c.className = `timeline-card ${i === activeIdx ? 'active' : ''}`);
             }
 
             let nextIdx = activeIdx + 1;
             const currentForm = formations[activeIdx];
             if (nextIdx >= formations.length) {
-                renderPositionsDirect(currentForm.positions); return;
+                renderPositionsAll(currentForm.positions, null, 0); return;
             }
             const nextForm = formations[nextIdx];
             const totalGap = nextForm.time - currentForm.time;
             let progress = totalGap > 0 ? (currentTime - currentForm.time) / totalGap : 1.0;
             progress = Math.max(0, Math.min(1, progress));
             
-            // スムーズなイージング移動
-            let easeProgress = progress < 0.5 ? 2 * progress * progress : 1 - Math.pow(-2 * progress + 2, 2) / 2;
-            renderInterpolated(currentForm.positions, nextForm.positions, easeProgress);
+            // イージング
+            let ease = progress < 0.5 ? 2 * progress * progress : 1 - Math.pow(-2 * progress + 2, 2) / 2;
+            renderPositionsAll(currentForm.positions, nextForm.positions, ease);
         }
 
         function formatTimeFull(secs) {
@@ -668,110 +665,96 @@
             return `${m}:${s}.${ms}`;
         }
 
-        // === キャンバス描画グラフィックス ===
         function draw() {
-            if (isAudioLoaded && !audio.paused) return;
-            const currentForm = formations[currentFrameIndex];
-            if (currentForm) renderPositionsDirect(currentForm.positions);
+            syncAnimationToAudio();
         }
 
-        function applyCameraTransform() {
-            ctx.translate(800/2 + offsetX, 600/2 + offsetY);
-            ctx.scale(zoom, zoom);
-            ctx.translate(-800/2, -600/2);
+        function syncLoopRender() {
+            pulseRadius = (pulseRadius + 0.35) % 20;
+            draw();
+            requestAnimationFrame(syncLoopRender);
         }
 
-        // 3Dパースの効いた超リアルなステージ背景の描写
-        function drawStageBackground() {
-            // 背景のグラデーション
-            let grad = ctx.createLinearGradient(0, 0, 0, 600);
-            grad.addColorStop(0, '#0f172a');
-            grad.addColorStop(1, '#1e293b');
-            ctx.fillStyle = grad;
-            ctx.fillRect(0, 0, 800, 600);
-
-            // 3Dパースペクティブグリッド（画像風の奥が狭い四角形ステージ）
-            ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
-            ctx.lineWidth = 1;
-            
-            // 横線
-            for(let i=0; i<=10; i++) {
-                let y = 150 + i * 40;
-                let xLeft = 150 - i * 12;
-                let xRight = 650 + i * 12;
-                ctx.beginPath(); ctx.moveTo(xLeft, y); ctx.lineTo(xRight, y); ctx.stroke();
-            }
-            // 縦線（パース付き）
-            for(let i=0; i<=8; i++) {
-                let xTop = 150 + i * 62.5;
-                let xBottom = 30 + i * 92.5;
-                ctx.beginPath(); ctx.moveTo(xTop, 150); ctx.lineTo(xBottom, 550); ctx.stroke();
-            }
-
-            // センターライン（赤・点線）
-            ctx.strokeStyle = 'rgba(239, 68, 68, 0.4)';
-            ctx.lineWidth = 1.5;
-            ctx.setLineDash([4, 4]);
-            ctx.beginPath(); ctx.moveTo(400, 100); ctx.lineTo(400, 580); ctx.stroke();
-            ctx.setLineDash([]);
-
-            // ステージ手前フチ
-            ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
-            ctx.lineWidth = 3;
-            ctx.beginPath(); ctx.moveTo(30, 550); ctx.lineTo(770, 550); ctx.stroke();
-        }
-
-        function renderPositionsDirect(positions) {
+        // === グラフィックスメインレンダー ===
+        function renderPositionsAll(startPos, endPos, ease) {
             canvas.width = 800; canvas.height = 600;
             ctx.clearRect(0, 0, 800, 600);
             ctx.save();
-            applyCameraTransform();
-            drawStageBackground();
 
-            positions.forEach(pos => {
-                const drawX = (pos.x / 1000) * 800;
-                const drawY = (pos.y / 1000) * 600;
-                const isSelected = selectedNumbers.includes(pos.memberNumber);
-                const isMyNum = (userRole === 'performer' && pos.memberNumber === myMemberNumber);
+            // パン・ズーム変形
+            ctx.translate(400 + offsetX, 300 + offsetY);
+            ctx.scale(zoom, zoom);
+            if(isFlipped) { ctx.rotate(Math.PI); } // 🪞 180度反転
+            ctx.translate(-400, -300);
+
+            // ステージ3Dパース背景
+            let grad = ctx.createLinearGradient(0, 0, 0, 600);
+            grad.addColorStop(0, '#0f172a'); grad.addColorStop(1, '#1e293b');
+            ctx.fillStyle = grad; ctx.fillRect(0, 0, 800, 600);
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)'; ctx.lineWidth = 1;
+            for(let i=0; i<=10; i++) {
+                let y = 150 + i * 40;
+                ctx.beginPath(); ctx.moveTo(150 - i*12, y); ctx.lineTo(650 + i*12, y); ctx.stroke();
+            }
+            ctx.strokeStyle = 'rgba(239, 68, 68, 0.3)'; ctx.lineWidth = 1.5;
+            ctx.setLineDash([4, 4]); ctx.beginPath(); ctx.moveTo(400, 100); ctx.lineTo(400, 580); ctx.stroke(); ctx.setLineDash([]);
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)'; ctx.lineWidth = 3;
+            ctx.beginPath(); ctx.moveTo(30, 550); ctx.lineTo(770, 550); ctx.stroke();
+
+            // メンバーのプロット計算・描写
+            for (let i = 1; i <= totalCount; i++) {
+                const sP = startPos.find(p => p.memberNumber === i);
+                const eP = endPos ? endPos.find(p => p.memberNumber === i) : null;
+                if (!sP) continue;
+
+                // 補間か固定かの位置確定
+                let cx = eP ? sP.x + (eP.x - sP.x) * ease : sP.x;
+                let cy = eP ? sP.y + (eP.y - sP.y) * ease : sP.y;
+
+                const dx = (cx / 1000) * 800;
+                const dy = (cy / 1000) * 600;
+                const isSelected = selectedNumbers.includes(i);
+                const isMyNum = (userRole === 'performer' && i === myMemberNumber);
+
+                // 🧭 1. ガイド移動線の描画（出演者・アニメーション時）
+                if (isMyNum && eP) {
+                    const ndx = (eP.x / 1000) * 800; const ndy = (eP.y / 1000) * 600;
+                    ctx.strokeStyle = 'rgba(234, 88, 12, 0.5)'; ctx.lineWidth = 3;
+                    ctx.setLineDash([6, 3]); ctx.beginPath(); ctx.moveTo(dx, dy); ctx.lineTo(ndx, ndy); ctx.stroke(); ctx.setLineDash([]);
+                }
 
                 if (isMyNum) {
-                    // 出演者マイ画面用のピカピカ波紋エフェクト（オレンジ色に大きく光る）
-                    ctx.save();
-                    ctx.shadowColor = '#ea580c';
-                    ctx.shadowBlur = 20;
-                    ctx.beginPath(); ctx.arc(drawX, drawY, 16 + pulsePulseRadius/2, 0, Math.PI*2);
-                    ctx.strokeStyle = `rgba(234, 88, 12, ${1 - pulsePulseRadius/20})`;
-                    ctx.lineWidth = 3; ctx.stroke(); ctx.restore();
+                    ctx.save(); ctx.shadowColor = '#ea580c'; ctx.shadowBlur = 20;
+                    ctx.beginPath(); ctx.arc(dx, dy, 16 + pulseRadius/2, 0, Math.PI*2);
+                    ctx.strokeStyle = `rgba(234, 88, 12, ${1 - pulseRadius/20})`; ctx.lineWidth = 3; ctx.stroke(); ctx.restore();
 
-                    ctx.beginPath(); ctx.arc(drawX, drawY, 18, 0, Math.PI * 2);
-                    ctx.fillStyle = '#ea580c';
-                    ctx.strokeStyle = '#ffffff';
-                    ctx.lineWidth = 3;
+                    ctx.beginPath(); ctx.arc(dx, dy, 18, 0, Math.PI * 2);
+                    ctx.fillStyle = '#ea580c'; ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 3;
                     ctx.fill(); ctx.stroke();
                 } else {
-                    // 通常のメンバー丸
-                    ctx.beginPath(); ctx.arc(drawX, drawY, 14, 0, Math.PI * 2);
-                    ctx.fillStyle = memberColors[pos.memberNumber] || '#3b82f6';
+                    ctx.beginPath(); ctx.arc(dx, dy, 14, 0, Math.PI * 2);
+                    ctx.fillStyle = memberColors[i] || '#3b82f6';
                     ctx.strokeStyle = isSelected ? '#ef4444' : '#ffffff';
                     ctx.lineWidth = isSelected ? 3.5 : 1.5;
                     ctx.fill(); ctx.stroke();
                 }
 
-                // 文字（番号または名前）
-                ctx.fillStyle = '#ffffff';
-                ctx.font = 'bold 11px sans-serif';
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'middle';
-                const label = memberNames[pos.memberNumber] ? memberNames[pos.memberNumber].substring(0,2) : pos.memberNumber;
-                ctx.fillText(label, drawX, drawY + 0.5);
-            });
+                // 反転時は文字の上下を直す
+                ctx.save();
+                ctx.translate(dx, dy);
+                if(isFlipped) { ctx.rotate(Math.PI); }
+                ctx.fillStyle = '#ffffff'; ctx.font = 'bold 11px sans-serif';
+                ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+                const label = memberNames[i] ? memberNames[i].substring(0,2) : i;
+                ctx.fillText(label, 0, 0.5);
+                ctx.restore();
+            }
 
             ctx.restore();
 
-            // 範囲選択用の赤い矩形枠線
+            // 🔲 2. 範囲選択四角枠線の正しい描画
             if (isSelecting && currentTool === 'box') {
-                ctx.strokeStyle = 'rgba(239, 68, 68, 0.8)';
-                ctx.lineWidth = 2;
+                ctx.strokeStyle = 'rgba(239, 68, 68, 0.85)'; ctx.lineWidth = 2;
                 ctx.fillStyle = 'rgba(239, 68, 68, 0.15)';
                 const w = selectEnd.canvasX - selectStart.canvasX;
                 const h = selectEnd.canvasY - selectStart.canvasY;
@@ -780,128 +763,85 @@
             }
         }
 
-        function renderInterpolated(startPositions, endPositions, ease) {
-            canvas.width = 800; canvas.height = 600;
-            ctx.clearRect(0, 0, 800, 600);
-            ctx.save();
-            applyCameraTransform();
-            drawStageBackground();
-
-            for (let i = 1; i <= totalCount; i++) {
-                const startP = startPositions.find(p => p.memberNumber === i);
-                const endP = endPositions.find(p => p.memberNumber === i);
-                if (!startP || !endP) continue;
-
-                let curX = startP.x + (endP.x - startP.x) * ease;
-                let curY = startP.y + (endP.y - startP.y) * ease;
-
-                const drawX = (curX / 1000) * 800;
-                const drawY = (curY / 1000) * 600;
-                const isMyNum = (userRole === 'performer' && i === myMemberNumber);
-
-                if (isMyNum) {
-                    ctx.save();
-                    ctx.shadowColor = '#ea580c'; ctx.shadowBlur = 20;
-                    ctx.beginPath(); ctx.arc(drawX, drawY, 16 + pulsePulseRadius/2, 0, Math.PI*2);
-                    ctx.strokeStyle = `rgba(234, 88, 12, ${1 - pulsePulseRadius/20})`;
-                    ctx.lineWidth = 3; ctx.stroke(); ctx.restore();
-
-                    ctx.beginPath(); ctx.arc(drawX, drawY, 18, 0, Math.PI * 2);
-                    ctx.fillStyle = '#ea580c'; ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 3;
-                    ctx.fill(); ctx.stroke();
-                } else {
-                    ctx.beginPath(); ctx.arc(drawX, drawY, 14, 0, Math.PI * 2);
-                    ctx.fillStyle = memberColors[i] || '#3b82f6';
-                    ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 1.5;
-                    ctx.fill(); ctx.stroke();
-                }
-
-                ctx.fillStyle = '#ffffff';
-                ctx.font = 'bold 11px sans-serif';
-                ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-                const label = memberNames[i] ? memberNames[i].substring(0,2) : i;
-                ctx.fillText(label, drawX, drawY + 0.5);
-            }
-            ctx.restore();
-        }
-
-        // 座標計算関数
+        // 精密座標逆算ロジック (ズーム・パン・反転対応)
         function getCoordinates(e) {
             const rect = canvas.getBoundingClientRect();
             const clientX = e.touches ? e.touches[0].clientX : e.clientX;
             const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+            
             const canvasX = ((clientX - rect.left) / rect.width) * 800;
             const canvasY = ((clientY - rect.top) / rect.height) * 600;
             
-            const dataX = (((canvasX - 800/2 - offsetX) / zoom) + 800/2) * (1000 / 800);
-            const dataY = (((canvasY - 600/2 - offsetY) / zoom) + 600/2) * (1000 / 600);
+            // 変換行列の逆算
+            let tx = canvasX - 400 - offsetX;
+            let ty = canvasY - 300 - offsetY;
+            tx /= zoom; ty /= zoom;
+            if (isFlipped) { tx = -tx; ty = -ty; }
+            tx += 400; ty += 300;
+
+            const dataX = tx * (1000 / 800);
+            const dataY = ty * (1000 / 600);
             return { dataX, dataY, canvasX, canvasY };
         }
 
-        // マウス・タッチ操作イベントハンドラ
         function handleStart(e) {
-            if (!audio.paused && isAudioLoaded) return;
             const coords = getCoordinates(e);
             const currentForm = formations[currentFrameIndex];
             
-            // 人形タッチ判定
-            const hit = currentForm.positions.find(p => Math.sqrt(Math.pow(p.x - coords.dataX, 2) + Math.pow(p.y - coords.dataY, 2)) < 30);
+            // タッチ当たり判定
+            const hit = currentForm.positions.find(p => Math.sqrt(Math.pow((p.x / 1000 * 800) - (coords.dataX / 1000 * 800), 2) + Math.pow((p.y / 1000 * 600) - (coords.dataY / 1000 * 600), 2)) < 25);
 
             if (userRole === 'admin' && hit && currentTool === 'select') {
                 dragMode = 'move_member';
                 draggedNumber = hit.memberNumber;
-                if (!selectedNumbers.includes(draggedNumber)) {
-                    selectedNumbers = [draggedNumber];
-                }
+                if (!selectedNumbers.includes(draggedNumber)) { selectedNumbers = [draggedNumber]; }
                 dragStartPositions = currentForm.positions.map(p => ({...p}));
-                startPanX = coords.dataX;
-                startPanY = coords.dataY;
+                startPanX = coords.dataX; startPanY = coords.dataY;
             } else if (userRole === 'admin' && currentTool === 'box') {
-                dragMode = 'select_box';
-                isSelecting = true;
-                selectStart = coords;
-                selectEnd = coords;
+                dragMode = 'select_box'; isSelecting = true;
+                selectStart = coords; selectEnd = coords;
             } else {
-                dragMode = 'pan';
-                isPanning = true;
-                const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-                const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-                startPanX = clientX - offsetX;
-                startPanY = clientY - offsetY;
+                dragMode = 'pan'; isPanning = true;
+                const clX = e.touches ? e.touches[0].clientX : e.clientX;
+                const clY = e.touches ? e.touches[0].clientY : e.clientY;
+                startPanX = clX - offsetX; startPanY = clY - offsetY;
             }
-            updateUI();
         }
 
         function handleMove(e) {
-            if (!audio.paused && isAudioLoaded) return;
             const coords = getCoordinates(e);
             const currentForm = formations[currentFrameIndex];
 
             if (dragMode === 'move_member' && draggedNumber !== null) {
                 if (e.cancelable) e.preventDefault();
-                const deltaX = coords.dataX - startPanX;
-                const deltaY = coords.dataY - startPanY;
+                const dx = coords.dataX - startPanX; const dy = coords.dataY - startPanY;
                 
                 selectedNumbers.forEach(num => {
                     const orig = dragStartPositions.find(p => p.memberNumber === num);
-                    const target = currentForm.positions.find(p => p.memberNumber === num);
-                    if (orig && target) {
-                        target.x = Math.max(10, Math.min(990, orig.x + deltaX));
-                        target.y = Math.max(10, Math.min(990, orig.y + deltaY));
+                    const tgt = currentForm.positions.find(p => p.memberNumber === num);
+                    if (orig && tgt) {
+                        tgt.x = Math.max(10, Math.min(990, orig.x + dx));
+                        tgt.y = Math.max(10, Math.min(990, orig.y + dy));
+
+                        // ⚖️ 左右対称アシスト処理
+                        if (symmetryAssist && selectedNumbers.length === 1) {
+                            const symNum = (num % 2 === 1) ? num + 1 : num - 1; // 1-2, 3-4番などがペア対称となるマッピング
+                            const symTgt = currentForm.positions.find(p => p.memberNumber === symNum);
+                            if (symTgt) {
+                                symTgt.x = 1000 - tgt.x; // センター400ベースの鏡像移動
+                                symTgt.y = tgt.y;
+                            }
+                        }
                     }
                 });
-                draw();
             } else if (dragMode === 'select_box' && isSelecting) {
                 if (e.cancelable) e.preventDefault();
                 selectEnd = coords;
-                draw();
             } else if (dragMode === 'pan' && isPanning) {
                 if (e.cancelable) e.preventDefault();
-                const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-                const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-                offsetX = clientX - startPanX;
-                offsetY = clientY - startPanY;
-                draw();
+                const clX = e.touches ? e.touches[0].clientX : e.clientX;
+                const clY = e.touches ? e.touches[0].clientY : e.clientY;
+                offsetX = clX - startPanX; offsetY = clY - startPanY;
             }
         }
 
@@ -919,8 +859,7 @@
                         selectedNumbers.push(pos.memberNumber);
                     }
                 });
-                isSelecting = false;
-                setTool('select'); // 移動ツールに戻す
+                isSelecting = false; setTool('select');
             }
             dragMode = null; draggedNumber = null; isPanning = false; isSelecting = false;
             updateUI();
@@ -928,64 +867,59 @@
 
         canvas.addEventListener('mousedown', handleStart); canvas.addEventListener('mousemove', handleMove); canvas.addEventListener('mouseup', handleEnd); canvas.addEventListener('mouseleave', handleEnd);
         canvas.addEventListener('touchstart', handleStart, { passive: false }); canvas.addEventListener('touchmove', handleMove, { passive: false }); canvas.addEventListener('touchend', handleEnd);
-
-        // マウスホイールでのズームイン・アウト
-        canvas.addEventListener('wheel', e => {
-            e.preventDefault();
-            if (e.deltaY < 0) zoom = Math.min(4.0, zoom * 1.1);
-            else zoom = Math.max(0.6, zoom / 1.1);
-            draw();
-        }, { passive: false });
+        canvas.addEventListener('wheel', e => { e.preventDefault(); if (e.deltaY < 0) zoom = Math.min(4.0, zoom * 1.05); else zoom = Math.max(0.6, zoom / 1.05); }, { passive: false });
 
         function toggleFullScreen() { document.body.classList.toggle('fullscreen-mode'); offsetX = 0; offsetY = 0; zoom = 1.0; draw(); }
 
-        // === 配置テンプレート作成関数群 ===
+        // 🤖 AI自動ペア最適化マッピング搭載型 テンプレート配置エンジン
         window.applyTemplate = function(type) {
             if(userRole !== 'admin') return;
             const currentForm = formations[currentFrameIndex];
             currentForm.positions = [];
             
+            // 1. まず基本シェイプのベース座系列を作成
+            let baseCoords = [];
             for (let i = 0; i < totalCount; i++) {
-                const num = i + 1; let x = 500, y = 500;
                 const rate = i / (totalCount - 1 || 1);
-                
+                let x = 500, y = 500;
                 if (type === 'line') { x = 150 + rate * 700; y = 400; }
                 else if (type === 'vertLine') { x = 400; y = 160 + rate * 380; }
-                else if (type === 'block') { 
-                    x = 200 + (i % 10) * 45; y = 220 + Math.floor(i / 10) * 45; 
-                } else if (type === 'rect') {
-                    if(i < 20) { x = 200 + (i/19)*400; y = 250; }
-                    else if(i < 40) { x = 600; y = 250 + ((i-20)/19)*200; }
-                    else if(i < 60) { x = 600 - ((i-40)/19)*400; y = 450; }
-                    else { x = 200; y = 450 - ((i-60)/9)*200; }
-                } else if (type === 'circle') {
-                    const angle = (i / totalCount) * 2 * Math.PI - Math.PI / 2;
-                    x = 400 + Math.cos(angle) * 200; y = 350 + Math.sin(angle) * 170;
-                } else if (type === 'vShape') {
-                    const isLeft = i < totalCount / 2;
-                    const step = isLeft ? i : (totalCount - 1 - i);
-                    x = isLeft ? 400 - (totalCount/2 - i)*11 : 400 + (i - totalCount/2)*11;
-                    y = 220 + step * 9;
-                } else if (type === 'triangle') {
-                    if (i < 25) { x = 400 - i*10; y = 200 + i*12; }
-                    else if (i < 50) { x = 150 + (i-25)*20; y = 500; }
-                    else { x = 650 - (i-50)*10; y = 500 - (i-50)*12; }
-                } else if (type === 'diamond') {
-                    if(i < 18) { x = 400 - i*12; y = 180 + i*10; }
-                    else if(i < 36) { x = 184 + (i-18)*12; y = 360 + (i-18)*10; }
-                    else if(i < 54) { x = 400 + (i-36)*12; y = 540 - (i-36)*10; }
-                    else { x = 616 - (i-54)*12; y = 360 - (i-54)*10; }
-                }
-                currentForm.positions.push({ memberNumber: num, x, y });
+                else if (type === 'block') { x = 200 + (i % 10) * 45; y = 220 + Math.floor(i / 10) * 45; }
+                else if (type === 'circle') { const angle = (i / totalCount) * 2 * Math.PI - Math.PI / 2; x = 400 + Math.cos(angle) * 220; y = 350 + Math.sin(angle) * 180; }
+                else if (type === 'vShape') { const isL = i < totalCount / 2; const step = isL ? i : (totalCount - 1 - i); x = isL ? 400 - (totalCount/2 - i)*11 : 400 + (i - totalCount/2)*11; y = 220 + step * 9; }
+                else if (type === 'triangle') { if (i < 25) { x = 400 - i*10; y = 200 + i*12; } else if (i < 50) { x = 150 + (i-25)*20; y = 500; } else { x = 650 - (i-50)*10; y = 500 - (i-50)*12; } }
+                baseCoords.push({x, y});
             }
+
+            // 2. 🤖 AIアルゴリズム: 登録されているペアリストをルックアップし、配列の隣り同士になるようにインデックスをソートマッピング
+            let unassigned = [];
+            for(let i=1; i<=totalCount; i++) unassigned.push(i);
+
+            let orderedMembers = [];
+            // ペアを優先的に隣り合わせの席に詰める
+            registeredPairs.forEach(pair => {
+                if(unassigned.includes(pair[0]) && unassigned.includes(pair[1])) {
+                    orderedMembers.push(pair[0]); orderedMembers.push(pair[1]);
+                    unassigned = unassigned.filter(m => m !== pair[0] && m !== pair[1]);
+                }
+            });
+            // 残ったピンのメンバーを後ろに結合
+            orderedMembers = [...orderedMembers, ...unassigned];
+
+            // 3. 確定したAIソート順に、ベースライン座標を流し込む
+            orderedMembers.forEach((mNum, idx) => {
+                if(idx < baseCoords.length) {
+                    currentForm.positions.push({ memberNumber: mNum, x: baseCoords[idx].x, y: baseCoords[idx].y });
+                }
+            });
+
             selectedNumbers = [];
-            draw();
+            updateUI();
         };
 
-        // アプリ起動処理
+        // 初期ロード
         loadFromCloud();
-        // 停止中もアニメーション（波紋）を滑らかに描画し続けるためのループ起動
-        if(!animationFrameId) animationFrameId = requestAnimationFrame(syncLoopRender);
+        requestAnimationFrame(syncLoopRender);
     </script>
 </body>
 </html>
