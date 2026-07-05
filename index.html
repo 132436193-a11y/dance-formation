@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>AI搭載 ダンスフォーメーションアプリ - Next Pro</title>
+    <title>ダンスフォーメーションアプリ - Unlimited Next Pro</title>
     <style>
         /* === 全体共通スタイル === */
         * { box-sizing: border-box; font-family: 'Helvetica Neue', Arial, sans-serif; margin: 0; padding: 0; user-select: none; }
@@ -27,7 +27,7 @@
         .btn-purple { background-color: #8b5cf6; color: white; border: none; }
 
         .main-container { flex: 1; display: flex; overflow: hidden; position: relative; }
-        .sidebar { width: 250px; background-color: var(--bg-secondary); border-right: 1px solid var(--border-color); padding: 12px; display: flex; flex-direction: column; gap: 14px; overflow-y: auto; }
+        .sidebar { width: 260px; background-color: var(--bg-secondary); border-right: 1px solid var(--border-color); padding: 12px; display: flex; flex-direction: column; gap: 14px; overflow-y: auto; }
         .sidebar-section { display: flex; flex-direction: column; gap: 6px; }
         .section-title { font-size: 11px; font-weight: bold; color: var(--text-sub); text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid var(--border-color); padding-bottom: 4px; }
         
@@ -83,6 +83,7 @@
         body.fullscreen-mode .exit-fs-btn { display: block; }
 
         .pair-item { display: flex; justify-content: space-between; align-items: center; background: var(--bg-tertiary); padding: 4px 8px; border-radius: 4px; font-size: 12px; border: 1px solid var(--border-color); }
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
     </style>
 </head>
 <body class="admin-theme">
@@ -93,7 +94,7 @@
 
     <div id="login-screen" class="login-overlay">
         <div class="login-card">
-            <h2>🕺 AI搭載 フォーメーション Next Pro</h2>
+            <h2>🕺 フォーメーションエディタ Next Pro</h2>
             <div class="login-tab">
                 <button id="tab-perf" class="tab-btn active" onclick="switchLoginTab('perf')">📱 出演者</button>
                 <button id="tab-admin" class="tab-btn" onclick="switchLoginTab('admin')">🛠️ 管理者</button>
@@ -127,50 +128,71 @@
         <div id="sidebar" class="sidebar">
             <div class="sidebar-section">
                 <div class="section-title">編集ツール</div>
-                <div style="display:grid; grid-template-columns:1fr 1fr; gap:4px;">
+                <div class="grid-2">
                     <button id="tool-select" class="btn btn-primary" onclick="setTool('select')">⬈ 選択移動</button>
                     <button id="tool-box" class="btn" onclick="setTool('box')">🔲 範囲選択</button>
                 </div>
-                <div style="display:grid; grid-template-columns:1fr 1fr; gap:4px; margin-top:4px;">
+                <div class="grid-2">
                     <button class="btn btn-success" onclick="addNewFrame()">＋ コマ追加</button>
                     <button class="btn btn-danger" onclick="deleteCurrentFrame()">× コマ削除</button>
                 </div>
-                <button id="sym-assist-btn" class="btn" style="margin-top:4px; justify-content:center;" onclick="toggleSymmetryAssist()">⚖️ 左右対称補正: OFF</button>
+                <button id="sym-assist-btn" class="btn" style="justify-content:center;" onclick="toggleSymmetryAssist()">⚖️ 左右対称補正: OFF</button>
             </div>
 
             <div class="sidebar-section">
-                <div class="section-title">🤖 AI・ペア設定機能 (プランB)</div>
-                <div style="display:flex; gap:4px;">
-                    <input type="number" id="pair-p1" placeholder="N1" style="width:50px; text-align:center;">
-                    <span>🔗</span>
-                    <input type="number" id="pair-p2" placeholder="N2" style="width:50px; text-align:center;">
-                    <button class="btn btn-primary" onclick="addPairFromUI()" style="padding:4px 8px;">登録</button>
+                <div class="section-title">🖼️ 下絵画像 & カスタムテンプレ</div>
+                <div style="display:flex; flex-direction:column; gap:4px;">
+                    <input type="file" id="bg-image-input" accept="image/*" onchange="loadBackgroundImage(this)" style="font-size:11px;">
+                    <button class="btn btn-orange" style="justify-content:center;" onclick="saveCurrentAsCustomTemplate()">💾 今の配置をテンプレ保存</button>
                 </div>
-                <div id="ui-pair-list" style="display:flex; flex-direction:column; gap:4px; max-height:80px; overflow-y:auto; background:rgba(0,0,0,0.2); padding:4px; border-radius:4px;">
-                    </div>
-                <button class="btn btn-purple" style="justify-content:center; font-size:11px; margin-top:2px;" onclick="askAIPositionAdvisor()">🤖 AIに配置を美しく最適化してもらう</button>
+                <div id="custom-template-list" style="display:flex; flex-direction:column; gap:4px; max-height:80px; overflow-y:auto; background:rgba(0,0,0,0.1); padding:2px;"></div>
             </div>
 
             <div class="sidebar-section">
-                <div class="section-title">AIペア対応テンプレート</div>
-                <div style="display:grid; grid-template-columns:1fr 1fr; gap:4px;">
+                <div class="section-title">🧮 幾何学テンプレート</div>
+                <div class="grid-2">
+                    <button onclick="applyTemplate('circle_2')" class="btn">🔘 2重円</button>
+                    <button onclick="applyTemplate('circle_3')" class="btn">🌀 3重円</button>
+                    <button onclick="applyTemplate('square_2')" class="btn">🔳 2重正方形</button>
+                    <button onclick="applyTemplate('radial')" class="btn">☀️ 放射線状</button>
+                    <button onclick="applyTemplate('triangles')" class="btn">🔺 複合三角形</button>
+                    <button onclick="applyTemplate('diamond')" class="btn">💎 ひし形</button>
+                    <button onclick="applyTemplate('cross_x')" class="btn">✖ X字クロス</button>
+                    <button onclick="applyTemplate('chidori_5')" class="btn">🏁 千鳥5列</button>
+                    <button onclick="applyTemplate('outer_box')" class="btn">⬜ 外周四角</button>
+                </div>
+            </div>
+
+            <div class="sidebar-section">
+                <div class="section-title">👥 基本 & ペアダンス用</div>
+                <div class="grid-2">
                     <button onclick="applyTemplate('line')" class="btn">横一列</button>
                     <button onclick="applyTemplate('vertLine')" class="btn">縦一列</button>
-                    <button onclick="applyTemplate('block')" class="btn">格子ブロック</button>
-                    <button onclick="applyTemplate('circle')" class="btn">円形サークル</button>
-                    <button onclick="applyTemplate('vShape')" class="btn">V字フォーメ</button>
-                    <button onclick="applyTemplate('triangle')" class="btn">三角形</button>
+                    <button onclick="applyTemplate('pair_side')" class="btn" style="background:#2e1065; color:white;">👫 ペア横並び</button>
+                    <button onclick="applyTemplate('pair_front')" class="btn" style="background:#2e1065; color:white;">↕ ペア前後2列</button>
+                    <button onclick="applyTemplate('pair_face')" class="btn" style="background:#2e1065; color:white;">⚔ ペア対面</button>
                 </div>
+            </div>
+
+            <div class="sidebar-section">
+                <div class="section-title">🔗 ペアパート番号登録</div>
+                <div style="display:flex; gap:4px;">
+                    <input type="number" id="pair-p1" placeholder="N1" style="width:45px; text-align:center;">
+                    <span>🔗</span>
+                    <input type="number" id="pair-p2" placeholder="N2" style="width:45px; text-align:center;">
+                    <button class="btn btn-primary" onclick="addPairFromUI()" style="padding:4px;">登録</button>
+                </div>
+                <div id="ui-pair-list" style="display:flex; flex-direction:column; gap:4px; max-height:70px; overflow-y:auto; background:rgba(0,0,0,0.2); padding:4px; border-radius:4px;"></div>
             </div>
 
             <div class="sidebar-section">
                 <div class="section-title">グループ一括色分け</div>
                 <div style="display:flex; flex-direction:column; gap:2px;">
-                    <button class="btn" style="font-size:11px; padding:4px;" onclick="applyGroupColor(1, 10, '#3b82f6')">🔵 1-10</button>
-                    <button class="btn" style="font-size:11px; padding:4px;" onclick="applyGroupColor(11, 25, '#10b981')">🟢 11-25</button>
-                    <button class="btn" style="font-size:11px; padding:4px;" onclick="applyGroupColor(26, 40, '#a855f7')">🟣 26-40</button>
-                    <button class="btn" style="font-size:11px; padding:4px;" onclick="applyGroupColor(41, 55, '#eab308')">🟡 41-55</button>
-                    <button class="btn" style="font-size:11px; padding:4px;" onclick="applyGroupColor(56, 70, '#ec4899')">💗 56-70</button>
+                    <button class="btn" style="font-size:11px; padding:2px;" onclick="applyGroupColor(1, 10, '#3b82f6')">🔵 1-10</button>
+                    <button class="btn" style="font-size:11px; padding:2px;" onclick="applyGroupColor(11, 25, '#10b981')">🟢 11-25</button>
+                    <button class="btn" style="font-size:11px; padding:2px;" onclick="applyGroupColor(26, 40, '#a855f7')">🟣 26-40</button>
+                    <button class="btn" style="font-size:11px; padding:2px;" onclick="applyGroupColor(41, 55, '#eab308')">🟡 41-55</button>
+                    <button class="btn" style="font-size:11px; padding:2px;" onclick="applyGroupColor(56, 70, '#ec4899')">💗 56-70</button>
                 </div>
             </div>
 
@@ -204,8 +226,8 @@
     <div class="bottom-controls">
         <div class="player-row">
             <div style="display:flex; align-items:center; gap:4px;">
-                <span style="font-size:11px; font-weight:bold;">🎵 楽曲音源:</span>
-                <input type="file" id="audio-file-input" accept="audio/*" onchange="loadAudioFile(this)" style="max-width:130px; font-size:11px;">
+                <span style="font-size:11px; font-weight:bold;">🎵 音源:</span>
+                <input type="file" id="audio-file-input" accept="audio/*" onchange="loadAudioFile(this)" style="max-width:120px; font-size:11px;">
             </div>
             <button id="play-pause-btn" class="btn btn-primary" onclick="togglePlay()">▶ 再生</button>
             <span id="time-display" class="time-display">00:00.000 / 00:00.000</span>
@@ -218,7 +240,7 @@
                 <button id="speed-05" class="btn" onclick="changePlaybackSpeed(0.5)">0.5x</button>
                 <button id="speed-10" class="btn btn-primary" onclick="changePlaybackSpeed(1.0)">1.0x</button>
             </div>
-            <button id="audio-mark-btn" class="btn btn-orange" onclick="markCurrentTime()">⏱ この秒数にコマを固定</button>
+            <button id="audio-mark-btn" class="btn btn-orange" onclick="markCurrentTime()">⏱ 秒数固定</button>
         </div>
 
         <div class="timeline-scroll-wrap">
@@ -228,7 +250,7 @@
 
     <div class="status-bar">
         <div>総数: <span id="status-total" class="status-highlight">70人</span> <span id="status-selected-info"></span></div>
-        <div>選択コマ: <span id="status-frame" class="status-highlight">コマ1</span> ⏱ 設定秒数: <span id="status-time" class="status-highlight">00:00.000</span></div>
+        <div>選択コマ: <span id="status-frame" class="status-highlight">コマ1</span> ⏱ 秒数: <span id="status-time" class="status-highlight">00:00.000</span></div>
     </div>
 
     <audio id="main-audio" style="display: none;"></audio>
@@ -237,11 +259,11 @@
         const ADMIN_PASSWORD = 'matutaku'; 
         let userRole = 'admin'; 
         let myMemberNumber = 28;
-        let isFlipped = false; // 視点反転フラグ
-        let symmetryAssist = false; // 左右対称アシスト
+        let isFlipped = false; 
+        let symmetryAssist = false; 
 
         // ==========================================
-        // 🌐 🌟【重要】ここに取得した「ウェブアプリのURL」を貼り付けてください 🌟
+        // 🌐 【重要】ここに取得した「ウェブアプリのURL」を貼り付けてください
         // ==========================================
         const CLOUD_DATABASE_URL = "https://script.google.com/a/macros/gse.okayama-c.ed.jp/s/AKfycbxynyMVeYcwAMgtf7tLC2zWOKWf7_2ZZ2EZw7uhMWjpeT_xbVFPrTrO9H7ECBPaSg4b/exec";
         // ==========================================
@@ -249,12 +271,11 @@
         let totalCount = 70;
         let memberColors = {};
         let memberNames = {};
-        let registeredPairs = [[1,2], [28,30], [15,16]]; // 初期デモ用ペア設定（プランBで画面追加可能）
+        let registeredPairs = [[1,2], [28,30], [15,16]]; 
+        let customTemplates = []; // ユーザー独自保存テンプレート
 
         let formations = [
-            { id: 'f1', name: 'コマ1', memo: 'オープニング位置\n(中央集合)', time: 0.0, positions: [] },
-            { id: 'f2', name: 'コマ2', memo: 'Aメロ：ペアダンス開始！\n近くの人と合わせて', time: 10.5, positions: [] },
-            { id: 'f3', name: 'コマ3', memo: 'サビ：全体V字ライン\n客席へアピール', time: 25.0, positions: [] }
+            { id: 'f1', name: 'コマ1', memo: 'オープニング位置', time: 0.0, positions: [] }
         ];
 
         let currentFrameIndex = 0;
@@ -263,11 +284,13 @@
         
         const audio = document.getElementById('main-audio');
         let isAudioLoaded = false;
-        let animationFrameId = null;
 
         // カメラパラメータ
         let zoom = 1.0; let offsetX = 0; let offsetY = 0;
         let isPanning = false; let startPanX = 0, startPanY = 0;
+
+        // 下絵画像用オブジェクト
+        let backgroundImage = null;
 
         // 範囲選択・ドラッグ用変数
         let isSelecting = false;
@@ -283,20 +306,18 @@
         const ctx = canvas.getContext('2d');
 
         function initInitialPositions() {
-            formations.forEach((form, fIdx) => {
-                form.positions = [];
-                for(let i = 0; i < totalCount; i++) {
-                    let x = 200 + (i % 10) * 45;
-                    let y = 250 + Math.floor(i / 10) * 50;
-                    form.positions.push({ memberNumber: i + 1, x, y });
-                }
-            });
+            formations[0].positions = [];
+            for(let i = 0; i < totalCount; i++) {
+                let x = 200 + (i % 10) * 45;
+                let y = 250 + Math.floor(i / 10) * 50;
+                formations[0].positions.push({ memberNumber: i + 1, x, y });
+            }
             for(let i = 1; i <= totalCount; i++) {
-                if(i <= 10) memberColors[i] = '#1e3a8a';
-                else if(i <= 25) memberColors[i] = '#16a34a';
-                else if(i <= 40) memberColors[i] = '#7c3aed';
-                else if(i <= 55) memberColors[i] = '#ca8a04';
-                else memberColors[i] = '#db2777';
+                if(i <= 10) memberColors[i] = '#3b82f6';
+                else if(i <= 25) memberColors[i] = '#10b981';
+                else if(i <= 40) memberColors[i] = '#a855f7';
+                else if(i <= 55) memberColors[i] = '#eab308';
+                else memberColors[i] = '#ec4899';
             }
         }
 
@@ -336,7 +357,7 @@
                 document.getElementById('app-title-text').innerText = "ダンスフォーメーションエディタ";
             } else {
                 body.className = 'perf-theme';
-                document.getElementById('top-banner').innerHTML = `<span>📱 出演者マイ画面 (${myMemberNumber}番) - 移動軌跡ガイド線・周辺メンバー同期表示中</span>`;
+                document.getElementById('top-banner').innerHTML = `<span>📱 出演者マイ画面 (${myMemberNumber}番) - 移動ガイド表示中</span>`;
                 document.getElementById('sidebar').style.display = 'none';
                 document.getElementById('edit-memo-btn').style.display = 'none';
                 document.getElementById('audio-mark-btn').style.display = 'none';
@@ -345,6 +366,7 @@
             }
             selectedNumbers = [];
             renderPairListUI();
+            renderCustomTemplateListUI();
             updateUI();
         }
 
@@ -366,18 +388,64 @@
             document.getElementById('sym-assist-btn').innerText = symmetryAssist ? '⚖️ 左右対称補正: ON' : '⚖️ 左右対称補正: OFF';
         }
 
-        // プランB：ペア登録UI制御
+        // 下絵画像の読み込み
+        function loadBackgroundImage(input) {
+            const file = input.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const img = new Image();
+                img.onload = function() {
+                    backgroundImage = img;
+                    draw();
+                };
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        // 今の配置をカスタムテンプレート化
+        function saveCurrentAsCustomTemplate() {
+            const name = prompt("作成したテンプレートの名前を入力してください:", `マイテンプレート ${customTemplates.length + 1}`);
+            if (!name) return;
+            const currentPositions = formations[currentFrameIndex].positions.map(p => ({...p}));
+            customTemplates.push({ name, positions: currentPositions });
+            renderCustomTemplateListUI();
+        }
+
+        function applyCustomTemplate(idx) {
+            if(userRole !== 'admin') return;
+            const currentForm = formations[currentFrameIndex];
+            const temp = customTemplates[idx];
+            if(!temp) return;
+            currentForm.positions = temp.positions.map(p => ({...p}));
+            selectedNumbers = [];
+            updateUI();
+        }
+
+        function renderCustomTemplateListUI() {
+            const container = document.getElementById('custom-template-list');
+            if(!container) return;
+            container.innerHTML = '';
+            customTemplates.forEach((temp, idx) => {
+                const btn = document.createElement('button');
+                btn.className = 'btn btn-purple';
+                btn.style.fontSize = '11px'; btn.style.padding = '4px'; btn.style.textAlign = 'left';
+                btn.innerText = `📁 ${temp.name}`;
+                btn.onclick = () => applyCustomTemplate(idx);
+                container.appendChild(btn);
+            });
+        }
+
         function addPairFromUI() {
             const p1 = parseInt(document.getElementById('pair-p1').value);
             const p2 = parseInt(document.getElementById('pair-p2').value);
-            if(!p1 || !p2 || p1 === p2 || p1 > totalCount || p2 > totalCount) return alert('正しい異なる出席番号を入力してください');
-            // 重複チェックを排除して登録
+            if(!p1 || !p2 || p1 === p2 || p1 > totalCount || p2 > totalCount) return alert('正しい出席番号を入力してください');
             registeredPairs = registeredPairs.filter(pair => !pair.includes(p1) && !pair.includes(p2));
             registeredPairs.push([p1, p2]);
             document.getElementById('pair-p1').value = '';
             document.getElementById('pair-p2').value = '';
             renderPairListUI();
-            alert(`AIにペア [${p1}番 🔗 ${p2}番] を学習させました！テンプレート適用時に自動反映されます。`);
         }
 
         function removePair(idx) {
@@ -387,41 +455,13 @@
 
         function renderPairListUI() {
             const container = document.getElementById('ui-pair-list');
-            if(!container) return;
-            container.innerHTML = '';
+            if(!container) return; container.innerHTML = '';
             registeredPairs.forEach((pair, idx) => {
                 const item = document.createElement('div');
                 item.className = 'pair-item';
                 item.innerHTML = `<span>👫 ${pair[0]}番 × ${pair[1]}番</span><span style="color:#ef4444; cursor:pointer;" onclick="removePair(${idx})">×</span>`;
                 container.appendChild(item);
             });
-        }
-
-        // 🤖 AI配置最適化アドバイザー（疑似AIエンジンが即座に美しく整列を補正）
-        function askAIPositionAdvisor() {
-            if(userRole !== 'admin') return;
-            const currentForm = formations[currentFrameIndex];
-            // AI処理：少し乱れたドットを綺麗なグリッドや最近接のペア同士に再マッピング調整
-            currentForm.positions.forEach(pos => {
-                // 中心に向かってわずかに引き締め綺麗に揃えるAI処理
-                pos.x = Math.round(pos.x / 10) * 10;
-                pos.y = Math.round(pos.y / 10) * 10;
-            });
-            // ペアを引き合わせる補正
-            registeredPairs.forEach(pair => {
-                const p1 = currentForm.positions.find(p => p.memberNumber === pair[0]);
-                const p2 = currentForm.positions.find(p => p.memberNumber === pair[1]);
-                if(p1 && p2) {
-                    // ペア同士の距離が離れすぎていたら、近くに引き寄せるAI補正
-                    let dist = Math.sqrt(Math.pow(p1.x - p2.x, 2) + Math.pow(p1.y - p2.y, 2));
-                    if(dist > 150) {
-                        p2.x = p1.x + 45;
-                        p2.y = p1.y;
-                    }
-                }
-            });
-            alert("🤖 AIアシスタント: 「登録されたペア配置の整合性と、グリッドシンメトリーを自動計算し、100%美しく補正をかけました！」");
-            updateUI();
         }
 
         async function loadFromCloud() {
@@ -437,27 +477,28 @@
                     memberNames = data.memberNames || {};
                     formations = data.formations;
                     if(data.registeredPairs) registeredPairs = data.registeredPairs;
+                    if(data.customTemplates) customTemplates = data.customTemplates;
                 } else { initInitialPositions(); }
             } catch (err) { initInitialPositions(); }
-            buildLoginDropdown(); renderPairListUI(); updateUI();
+            buildLoginDropdown(); renderPairListUI(); renderCustomTemplateListUI(); updateUI();
         }
 
         async function syncToCloud() {
             if (userRole !== 'admin') return;
             if (!CLOUD_DATABASE_URL || CLOUD_DATABASE_URL.includes("ここにデプロイ")) {
-                alert("❌ エラー: スプレッドシート（GAS）のURLが正しく設定されていません。"); return;
+                alert("❌ エラー: GASのURLが設定されていません。"); return;
             }
             const btn = document.getElementById('cloud-sync-btn');
-            btn.innerText = "⏳ 保存配信中...";
-            const dataToSave = { totalCount, memberColors, memberNames, formations, registeredPairs };
+            btn.innerText = "⏳ 保存中...";
+            const dataToSave = { totalCount, memberColors, memberNames, formations, registeredPairs, customTemplates };
             try {
                 await fetch(CLOUD_DATABASE_URL, {
                     method: 'POST', mode: 'no-cors',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(dataToSave)
                 });
-                alert("📡 配信・クラウド保存が完了しました！全員のスマホへ自動リアルタイム同期されます。");
-            } catch (err) { alert("❌ 通信制限エラーが発生しました。"); }
+                alert("📡 保存・クラウド一斉配信が完了しました！");
+            } catch (err) { alert("❌ 通信エラーが発生しました。"); }
             finally { btn.innerText = "💾 クラウド配信保存"; draw(); }
         }
 
@@ -480,14 +521,10 @@
 
             document.getElementById('status-frame').innerText = currentForm.name;
             document.getElementById('status-time').innerText = formatTimeFull(currentForm.time);
-            document.getElementById('status-selected-info').innerText = (selectedNumbers.length > 0) ? `(選択中:${selectedNumbers.length}人)` : '';
+            document.getElementById('status-selected-info').innerText = (selectedNumbers.length > 0) ? `(選択:${selectedNumbers.length}人)` : '';
 
-            // 周辺メンバーテキスト計算（出演者用）
-            if(userRole === 'performer') {
-                calculateSurroundingMembers(currentForm.positions);
-            }
+            if(userRole === 'performer') calculateSurroundingMembers(currentForm.positions);
 
-            // タイムラインカード生成
             const container = document.getElementById('timeline-container');
             container.innerHTML = '';
             formations.forEach((form, idx) => {
@@ -500,8 +537,7 @@
                     updateUI();
                 };
 
-                const thumb = document.createElement('div');
-                thumb.className = 'thumb-preview';
+                const thumb = document.createElement('div'); thumb.className = 'thumb-preview';
                 form.positions.slice(0, 15).forEach(p => {
                     const d = document.createElement('div');
                     d.style.position = 'absolute'; d.style.width = '3px'; d.style.height = '3px';
@@ -519,7 +555,6 @@
             draw();
         }
 
-        // 周辺前後左右にいる人を割り出すロジック
         function calculateSurroundingMembers(positions) {
             const myPos = positions.find(p => p.memberNumber === myMemberNumber);
             const listDiv = document.getElementById('surround-list');
@@ -529,14 +564,11 @@
                 .filter(p => p.memberNumber !== myMemberNumber)
                 .map(p => {
                     let dx = p.x - myPos.x; let dy = p.y - myPos.y;
-                    let dist = Math.sqrt(dx*dx + dy*dy);
-                    return { p, dx, dy, dist };
+                    return { p, dx, dy, dist: Math.sqrt(dx*dx + dy*dy) };
                 })
-                .sort((a,b) => a.dist - b.dist)
-                .slice(0, 4); // 近い4人
+                .sort((a,b) => a.dist - b.dist).slice(0, 4);
 
             if(nearest.length === 0) { listDiv.innerHTML = "なし"; return; }
-            
             let html = "";
             nearest.forEach(n => {
                 let dir = "付近";
@@ -588,24 +620,20 @@
             }
         }
 
-        // 音楽プレイヤー制御
         function loadAudioFile(input) {
             const file = input.files[0]; if (!file) return;
             audio.src = URL.createObjectURL(file); audio.load(); isAudioLoaded = true;
         }
         function togglePlay() {
-            if(!isAudioLoaded) return alert("先に音楽音源ファイルを指定してください！");
+            if(!isAudioLoaded) return alert("先に音楽ファイルを選択してください！");
             if(audio.paused) {
                 audio.playbackRate = currentPlaybackSpeed; audio.play();
                 document.getElementById('play-pause-btn').innerText = '⏸ 停止';
-            } else {
-                audio.pause(); document.getElementById('play-pause-btn').innerText = '▶ 再生';
-            }
+            } else { audio.pause(); document.getElementById('play-pause-btn').innerText = '▶ 再生'; }
         }
         function handleSeekBar(val) {
             if(!isAudioLoaded) return;
-            audio.currentTime = (val / 100) * audio.duration;
-            syncAnimationToAudio();
+            audio.currentTime = (val / 100) * audio.duration; draw();
         }
         function changePlaybackSpeed(speed) {
             currentPlaybackSpeed = speed; audio.playbackRate = speed;
@@ -615,11 +643,9 @@
         function markCurrentTime() {
             if(!isAudioLoaded) return;
             formations[currentFrameIndex].time = Math.round(audio.currentTime * 1000) / 1000;
-            formations.sort((a, b) => a.time - b.time);
-            updateUI();
+            formations.sort((a, b) => a.time - b.time); updateUI();
         }
 
-        // 🟢 完全シンクロ・連動モーションエンジン
         function syncAnimationToAudio() {
             const currentTime = audio.currentTime;
             let activeIdx = 0;
@@ -629,16 +655,12 @@
             
             const timeDisp = document.getElementById('time-display');
             if(timeDisp) timeDisp.innerText = `${formatTimeFull(currentTime)} / ${isAudioLoaded ? formatTimeFull(audio.duration) : '00:00.000'}`;
-            if(isAudioLoaded && !audio.paused) {
-                document.getElementById('seek-bar').value = (currentTime / audio.duration) * 100;
-            }
+            if(isAudioLoaded && !audio.paused) document.getElementById('seek-bar').value = (currentTime / audio.duration) * 100;
 
-            // 再生中は自動でインデックス切り替え
             if(currentFrameIndex !== activeIdx && !audio.paused) {
                 currentFrameIndex = activeIdx;
                 document.getElementById('status-frame').innerText = formations[activeIdx].name;
                 document.getElementById('memo-body-text').innerText = formations[activeIdx].memo || '指示なし';
-                // タイムラインのactive枠を外側から同期
                 const cards = document.querySelectorAll('.timeline-card');
                 cards.forEach((c, i) => c.className = `timeline-card ${i === activeIdx ? 'active' : ''}`);
             }
@@ -652,8 +674,6 @@
             const totalGap = nextForm.time - currentForm.time;
             let progress = totalGap > 0 ? (currentTime - currentForm.time) / totalGap : 1.0;
             progress = Math.max(0, Math.min(1, progress));
-            
-            // イージング
             let ease = progress < 0.5 ? 2 * progress * progress : 1 - Math.pow(-2 * progress + 2, 2) / 2;
             renderPositionsAll(currentForm.positions, nextForm.positions, ease);
         }
@@ -665,66 +685,60 @@
             return `${m}:${s}.${ms}`;
         }
 
-        function draw() {
-            syncAnimationToAudio();
-        }
+        function draw() { syncAnimationToAudio(); }
+        function syncLoopRender() { pulseRadius = (pulseRadius + 0.35) % 20; draw(); requestAnimationFrame(syncLoopRender); }
 
-        function syncLoopRender() {
-            pulseRadius = (pulseRadius + 0.35) % 20;
-            draw();
-            requestAnimationFrame(syncLoopRender);
-        }
-
-        // === グラフィックスメインレンダー ===
         function renderPositionsAll(startPos, endPos, ease) {
             canvas.width = 800; canvas.height = 600;
             ctx.clearRect(0, 0, 800, 600);
             ctx.save();
 
-            // パン・ズーム変形
             ctx.translate(400 + offsetX, 300 + offsetY);
             ctx.scale(zoom, zoom);
-            if(isFlipped) { ctx.rotate(Math.PI); } // 🪞 180度反転
+            if(isFlipped) ctx.rotate(Math.PI);
             ctx.translate(-400, -300);
 
-            // ステージ3Dパース背景
-            let grad = ctx.createLinearGradient(0, 0, 0, 600);
-            grad.addColorStop(0, '#0f172a'); grad.addColorStop(1, '#1e293b');
-            ctx.fillStyle = grad; ctx.fillRect(0, 0, 800, 600);
-            ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)'; ctx.lineWidth = 1;
-            for(let i=0; i<=10; i++) {
-                let y = 150 + i * 40;
-                ctx.beginPath(); ctx.moveTo(150 - i*12, y); ctx.lineTo(650 + i*12, y); ctx.stroke();
+            // 背景下絵画像がある場合は描写
+            if (backgroundImage) {
+                ctx.drawImage(backgroundImage, 0, 0, 800, 600);
+            } else {
+                let grad = ctx.createLinearGradient(0, 0, 0, 600);
+                grad.addColorStop(0, '#0f172a'); grad.addColorStop(1, '#1e293b');
+                ctx.fillStyle = grad; ctx.fillRect(0, 0, 800, 600);
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)'; ctx.lineWidth = 1;
+                for(let i=0; i<=10; i++) {
+                    let y = 150 + i * 40;
+                    ctx.beginPath(); ctx.moveTo(150 - i*12, y); ctx.lineTo(650 + i*12, y); ctx.stroke();
+                }
             }
-            ctx.strokeStyle = 'rgba(239, 68, 68, 0.3)'; ctx.lineWidth = 1.5;
-            ctx.setLineDash([4, 4]); ctx.beginPath(); ctx.moveTo(400, 100); ctx.lineTo(400, 580); ctx.stroke(); ctx.setLineDash([]);
-            ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)'; ctx.lineWidth = 3;
-            ctx.beginPath(); ctx.moveTo(30, 550); ctx.lineTo(770, 550); ctx.stroke();
 
-            // メンバーのプロット計算・描写
+            // センター十字ガイド線
+            ctx.strokeStyle = 'rgba(239, 68, 68, 0.25)'; ctx.lineWidth = 1.5;
+            ctx.setLineDash([4, 4]); ctx.beginPath(); ctx.moveTo(400, 50); ctx.lineTo(400, 550); ctx.stroke(); ctx.setLineDash([]);
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)'; ctx.lineWidth = 2;
+            ctx.beginPath(); ctx.moveTo(30, 530); ctx.lineTo(770, 530); ctx.stroke();
+
+            // メンバー描写
             for (let i = 1; i <= totalCount; i++) {
                 const sP = startPos.find(p => p.memberNumber === i);
                 const eP = endPos ? endPos.find(p => p.memberNumber === i) : null;
                 if (!sP) continue;
 
-                // 補間か固定かの位置確定
                 let cx = eP ? sP.x + (eP.x - sP.x) * ease : sP.x;
                 let cy = eP ? sP.y + (eP.y - sP.y) * ease : sP.y;
 
-                const dx = (cx / 1000) * 800;
-                const dy = (cy / 1000) * 600;
+                const dx = (cx / 1000) * 800; const dy = (cy / 1000) * 600;
                 const isSelected = selectedNumbers.includes(i);
                 const isMyNum = (userRole === 'performer' && i === myMemberNumber);
 
-                // 🧭 1. ガイド移動線の描画（出演者・アニメーション時）
                 if (isMyNum && eP) {
                     const ndx = (eP.x / 1000) * 800; const ndy = (eP.y / 1000) * 600;
-                    ctx.strokeStyle = 'rgba(234, 88, 12, 0.5)'; ctx.lineWidth = 3;
+                    ctx.strokeStyle = 'rgba(234, 88, 12, 0.6)'; ctx.lineWidth = 3;
                     ctx.setLineDash([6, 3]); ctx.beginPath(); ctx.moveTo(dx, dy); ctx.lineTo(ndx, ndy); ctx.stroke(); ctx.setLineDash([]);
                 }
 
                 if (isMyNum) {
-                    ctx.save(); ctx.shadowColor = '#ea580c'; ctx.shadowBlur = 20;
+                    ctx.save(); ctx.shadowColor = '#ea580c'; ctx.shadowBlur = 15;
                     ctx.beginPath(); ctx.arc(dx, dy, 16 + pulseRadius/2, 0, Math.PI*2);
                     ctx.strokeStyle = `rgba(234, 88, 12, ${1 - pulseRadius/20})`; ctx.lineWidth = 3; ctx.stroke(); ctx.restore();
 
@@ -739,67 +753,46 @@
                     ctx.fill(); ctx.stroke();
                 }
 
-                // 反転時は文字の上下を直す
-                ctx.save();
-                ctx.translate(dx, dy);
-                if(isFlipped) { ctx.rotate(Math.PI); }
+                ctx.save(); ctx.translate(dx, dy); if(isFlipped) ctx.rotate(Math.PI);
                 ctx.fillStyle = '#ffffff'; ctx.font = 'bold 11px sans-serif';
                 ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-                const label = memberNames[i] ? memberNames[i].substring(0,2) : i;
-                ctx.fillText(label, 0, 0.5);
+                ctx.fillText(memberNames[i] ? memberNames[i].substring(0,2) : i, 0, 0.5);
                 ctx.restore();
             }
-
             ctx.restore();
 
-            // 🔲 2. 範囲選択四角枠線の正しい描画
             if (isSelecting && currentTool === 'box') {
-                ctx.strokeStyle = 'rgba(239, 68, 68, 0.85)'; ctx.lineWidth = 2;
+                ctx.strokeStyle = 'rgba(239, 68, 68, 0.8)'; ctx.lineWidth = 2;
                 ctx.fillStyle = 'rgba(239, 68, 68, 0.15)';
-                const w = selectEnd.canvasX - selectStart.canvasX;
-                const h = selectEnd.canvasY - selectStart.canvasY;
-                ctx.fillRect(selectStart.canvasX, selectStart.canvasY, w, h);
-                ctx.strokeRect(selectStart.canvasX, selectStart.canvasY, w, h);
+                ctx.fillRect(selectStart.canvasX, selectStart.canvasY, selectEnd.canvasX - selectStart.canvasX, selectEnd.canvasY - selectStart.canvasY);
+                ctx.strokeRect(selectStart.canvasX, selectStart.canvasY, selectEnd.canvasX - selectStart.canvasX, selectEnd.canvasY - selectStart.canvasY);
             }
         }
 
-        // 精密座標逆算ロジック (ズーム・パン・反転対応)
         function getCoordinates(e) {
             const rect = canvas.getBoundingClientRect();
             const clientX = e.touches ? e.touches[0].clientX : e.clientX;
             const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-            
             const canvasX = ((clientX - rect.left) / rect.width) * 800;
             const canvasY = ((clientY - rect.top) / rect.height) * 600;
-            
-            // 変換行列の逆算
-            let tx = canvasX - 400 - offsetX;
-            let ty = canvasY - 300 - offsetY;
-            tx /= zoom; ty /= zoom;
-            if (isFlipped) { tx = -tx; ty = -ty; }
+            let tx = canvasX - 400 - offsetX; let ty = canvasY - 300 - offsetY;
+            tx /= zoom; ty /= zoom; if (isFlipped) { tx = -tx; ty = -ty; }
             tx += 400; ty += 300;
-
-            const dataX = tx * (1000 / 800);
-            const dataY = ty * (1000 / 600);
-            return { dataX, dataY, canvasX, canvasY };
+            return { dataX: tx * (1000 / 800), dataY: ty * (1000 / 600), canvasX, canvasY };
         }
 
         function handleStart(e) {
             const coords = getCoordinates(e);
             const currentForm = formations[currentFrameIndex];
-            
-            // タッチ当たり判定
             const hit = currentForm.positions.find(p => Math.sqrt(Math.pow((p.x / 1000 * 800) - (coords.dataX / 1000 * 800), 2) + Math.pow((p.y / 1000 * 600) - (coords.dataY / 1000 * 600), 2)) < 25);
 
             if (userRole === 'admin' && hit && currentTool === 'select') {
-                dragMode = 'move_member';
-                draggedNumber = hit.memberNumber;
-                if (!selectedNumbers.includes(draggedNumber)) { selectedNumbers = [draggedNumber]; }
+                dragMode = 'move_member'; draggedNumber = hit.memberNumber;
+                if (!selectedNumbers.includes(draggedNumber)) selectedNumbers = [draggedNumber];
                 dragStartPositions = currentForm.positions.map(p => ({...p}));
                 startPanX = coords.dataX; startPanY = coords.dataY;
             } else if (userRole === 'admin' && currentTool === 'box') {
-                dragMode = 'select_box'; isSelecting = true;
-                selectStart = coords; selectEnd = coords;
+                dragMode = 'select_box'; isSelecting = true; selectStart = coords; selectEnd = coords;
             } else {
                 dragMode = 'pan'; isPanning = true;
                 const clX = e.touches ? e.touches[0].clientX : e.clientX;
@@ -815,28 +808,21 @@
             if (dragMode === 'move_member' && draggedNumber !== null) {
                 if (e.cancelable) e.preventDefault();
                 const dx = coords.dataX - startPanX; const dy = coords.dataY - startPanY;
-                
                 selectedNumbers.forEach(num => {
                     const orig = dragStartPositions.find(p => p.memberNumber === num);
                     const tgt = currentForm.positions.find(p => p.memberNumber === num);
                     if (orig && tgt) {
                         tgt.x = Math.max(10, Math.min(990, orig.x + dx));
                         tgt.y = Math.max(10, Math.min(990, orig.y + dy));
-
-                        // ⚖️ 左右対称アシスト処理
                         if (symmetryAssist && selectedNumbers.length === 1) {
-                            const symNum = (num % 2 === 1) ? num + 1 : num - 1; // 1-2, 3-4番などがペア対称となるマッピング
+                            const symNum = (num % 2 === 1) ? num + 1 : num - 1;
                             const symTgt = currentForm.positions.find(p => p.memberNumber === symNum);
-                            if (symTgt) {
-                                symTgt.x = 1000 - tgt.x; // センター400ベースの鏡像移動
-                                symTgt.y = tgt.y;
-                            }
+                            if (symTgt) { symTgt.x = 1000 - tgt.x; symTgt.y = tgt.y; }
                         }
                     }
                 });
             } else if (dragMode === 'select_box' && isSelecting) {
-                if (e.cancelable) e.preventDefault();
-                selectEnd = coords;
+                if (e.cancelable) e.preventDefault(); selectEnd = coords;
             } else if (dragMode === 'pan' && isPanning) {
                 if (e.cancelable) e.preventDefault();
                 const clX = e.touches ? e.touches[0].clientX : e.clientX;
@@ -848,76 +834,157 @@
         function handleEnd() {
             if (dragMode === 'select_box' && isSelecting) {
                 const currentForm = formations[currentFrameIndex];
-                const xMin = Math.min(selectStart.dataX, selectEnd.dataX);
-                const xMax = Math.max(selectStart.dataX, selectEnd.dataX);
-                const yMin = Math.min(selectStart.dataY, selectEnd.dataY);
-                const yMax = Math.max(selectStart.dataY, selectEnd.dataY);
-                
+                const xMin = Math.min(selectStart.dataX, selectEnd.dataX); const xMax = Math.max(selectStart.dataX, selectEnd.dataX);
+                const yMin = Math.min(selectStart.dataY, selectEnd.dataY); const yMax = Math.max(selectStart.dataY, selectEnd.dataY);
                 selectedNumbers = [];
                 currentForm.positions.forEach(pos => {
-                    if (pos.x >= xMin && pos.x <= xMax && pos.y >= yMin && pos.y <= yMax) {
-                        selectedNumbers.push(pos.memberNumber);
-                    }
+                    if (pos.x >= xMin && pos.x <= xMax && pos.y >= yMin && pos.y <= yMax) selectedNumbers.push(pos.memberNumber);
                 });
                 isSelecting = false; setTool('select');
             }
-            dragMode = null; draggedNumber = null; isPanning = false; isSelecting = false;
-            updateUI();
+            dragMode = null; draggedNumber = null; isPanning = false; isSelecting = false; updateUI();
         }
 
         canvas.addEventListener('mousedown', handleStart); canvas.addEventListener('mousemove', handleMove); canvas.addEventListener('mouseup', handleEnd); canvas.addEventListener('mouseleave', handleEnd);
         canvas.addEventListener('touchstart', handleStart, { passive: false }); canvas.addEventListener('touchmove', handleMove, { passive: false }); canvas.addEventListener('touchend', handleEnd);
         canvas.addEventListener('wheel', e => { e.preventDefault(); if (e.deltaY < 0) zoom = Math.min(4.0, zoom * 1.05); else zoom = Math.max(0.6, zoom / 1.05); }, { passive: false });
-
         function toggleFullScreen() { document.body.classList.toggle('fullscreen-mode'); offsetX = 0; offsetY = 0; zoom = 1.0; draw(); }
 
-        // 🤖 AI自動ペア最適化マッピング搭載型 テンプレート配置エンジン
+        // 無限幾何学＆ペア連動テンプレートエンジン
         window.applyTemplate = function(type) {
             if(userRole !== 'admin') return;
             const currentForm = formations[currentFrameIndex];
             currentForm.positions = [];
-            
-            // 1. まず基本シェイプのベース座系列を作成
             let baseCoords = [];
-            for (let i = 0; i < totalCount; i++) {
-                const rate = i / (totalCount - 1 || 1);
-                let x = 500, y = 500;
-                if (type === 'line') { x = 150 + rate * 700; y = 400; }
-                else if (type === 'vertLine') { x = 400; y = 160 + rate * 380; }
-                else if (type === 'block') { x = 200 + (i % 10) * 45; y = 220 + Math.floor(i / 10) * 45; }
-                else if (type === 'circle') { const angle = (i / totalCount) * 2 * Math.PI - Math.PI / 2; x = 400 + Math.cos(angle) * 220; y = 350 + Math.sin(angle) * 180; }
-                else if (type === 'vShape') { const isL = i < totalCount / 2; const step = isL ? i : (totalCount - 1 - i); x = isL ? 400 - (totalCount/2 - i)*11 : 400 + (i - totalCount/2)*11; y = 220 + step * 9; }
-                else if (type === 'triangle') { if (i < 25) { x = 400 - i*10; y = 200 + i*12; } else if (i < 50) { x = 150 + (i-25)*20; y = 500; } else { x = 650 - (i-50)*10; y = 500 - (i-50)*12; } }
-                baseCoords.push({x, y});
+
+            if (type === 'line') {
+                for(let i=0; i<totalCount; i++) baseCoords.push({ x: 150 + (i / (totalCount-1)) * 700, y: 400 });
+            } else if (type === 'vertLine') {
+                for(let i=0; i<totalCount; i++) baseCoords.push({ x: 400, y: 150 + (i / (totalCount-1)) * 400 });
+            } else if (type === 'circle_2') {
+                // 2重円 (内側30人、外側40人)
+                for(let i=0; i<30; i++) { let r = (i/30)*2*Math.PI; baseCoords.push({ x: 400 + Math.cos(r)*130, y: 350 + Math.sin(r)*110 }); }
+                for(let i=0; i<40; i++) { let r = (i/40)*2*Math.PI; baseCoords.push({ x: 400 + Math.cos(r)*240, y: 350 + Math.sin(r)*200 }); }
+            } else if (type === 'circle_3') {
+                // 3重円 (内15人、中25人、外30人)
+                for(let i=0; i<15; i++) { let r = (i/15)*2*Math.PI; baseCoords.push({ x: 400 + Math.cos(r)*80, y: 350 + Math.sin(r)*70 }); }
+                for(let i=0; i<25; i++) { let r = (i/25)*2*Math.PI; baseCoords.push({ x: 400 + Math.cos(r)*160, y: 350 + Math.sin(r)*130 }); }
+                for(let i=0; i<30; i++) { let r = (i/30)*2*Math.PI; baseCoords.push({ x: 400 + Math.cos(r)*250, y: 350 + Math.sin(r)*210 }); }
+            } else if (type === 'square_2') {
+                // 2重正方形
+                for(let i=0; i<28; i++) { // 内枠
+                    let rate = i / 28;
+                    let x = 300, y = 250;
+                    if(rate < 0.25) { x = 300 + (rate/0.25)*200; y = 250; }
+                    else if(rate < 0.5) { x = 500; y = 250 + ((rate-0.25)/0.25)*180; }
+                    else if(rate < 0.75) { x = 500 - ((rate-0.5)/0.25)*200; y = 430; }
+                    else { x = 300; y = 430 - ((rate-0.75)/0.25)*180; }
+                    baseCoords.push({x, y});
+                }
+                for(let i=0; i<42; i++) { // 外枠
+                    let rate = i / 42;
+                    let x = 180, y = 150;
+                    if(rate < 0.25) { x = 180 + (rate/0.25)*440; y = 150; }
+                    else if(rate < 0.5) { x = 620; y = 150 + ((rate-0.25)/0.25)*360; }
+                    else if(rate < 0.75) { x = 620 - ((rate-0.5)/0.25)*440; y = 510; }
+                    else { x = 180; y = 510 - ((rate-0.75)/0.25)*360; }
+                    baseCoords.push({x, y});
+                }
+            } else if (type === 'radial') {
+                // 放射線状 (8方向の矢印ライン)
+                for(let i=0; i<totalCount; i++) {
+                    let lineIdx = i % 8; let step = Math.floor(i / 8);
+                    let angle = (lineIdx / 8) * 2 * Math.PI;
+                    let dist = 50 + step * 48;
+                    baseCoords.push({ x: 400 + Math.cos(angle)*dist*1.2, y: 330 + Math.sin(angle)*dist });
+                }
+            } else if (type === 'triangles') {
+                // 複合三角形 (4つのミニ三角形塊)
+                let centers = [{x:250, y:230}, {x:550, y:230}, {x:250, y:450}, {x:550, y:450}];
+                for(let i=0; i<totalCount; i++) {
+                    let c = centers[i % 4]; let s = Math.floor(i / 4);
+                    let ox = (s % 3) * 35 - 35; let oy = Math.floor(s / 3) * 35 - 35;
+                    baseCoords.push({ x: c.x + ox, y: c.y + oy });
+                }
+            } else if (type === 'diamond') {
+                // ひし形フォーメーション
+                for(let i=0; i<totalCount; i++) {
+                    let rate = i / totalCount;
+                    let angle = rate * 2 * Math.PI;
+                    let x = 400 + Math.sign(Math.cos(angle)) * Math.pow(Math.abs(Math.cos(angle)), 1) * 260;
+                    let y = 330 + Math.sign(Math.sin(angle)) * Math.pow(Math.abs(Math.sin(angle)), 1) * 210;
+                    baseCoords.push({x, y});
+                }
+            } else if (type === 'cross_x') {
+                // X字クロスライン
+                for(let i=0; i<35; i++) baseCoords.push({ x: 180 + (i/34)*440, y: 150 + (i/34)*360 });
+                for(let i=0; i<35; i++) baseCoords.push({ x: 620 - (i/34)*440, y: 150 + (i/34)*360 });
+            } else if (type === 'chidori_5') {
+                // 縦5列の互い違い千鳥
+                for(let i=0; i<totalCount; i++) {
+                    let col = i % 5; let row = Math.floor(i / 5);
+                    let x = 180 + col * 110;
+                    let y = 160 + row * 34 + (col % 2 * 17);
+                    baseCoords.push({x, y});
+                }
+            } else if (type === 'outer_box') {
+                // 大きな外周四角形一列
+                for(let i=0; i<totalCount; i++) {
+                    let rate = i / totalCount;
+                    let x = 120, y = 130;
+                    if(rate < 0.25) { x = 120 + (rate/0.25)*560; y = 130; }
+                    else if(rate < 0.5) { x = 680; y = 130 + ((rate-0.25)/0.25)*380; }
+                    else if(rate < 0.75) { x = 680 - ((rate-0.5)/0.25)*560; y = 510; }
+                    else { x = 120; y = 510 - ((rate-0.75)/0.25)*380; }
+                    baseCoords.push({x, y});
+                }
+            } else if (type === 'pair_side') {
+                // ペア横並び3列シート
+                for(let i=0; i<totalCount; i++) {
+                    let row = Math.floor(i / 24); let col = i % 24;
+                    let x = 130 + col * 24 + (Math.floor(col/2)*12);
+                    let y = 220 + row * 70;
+                    baseCoords.push({x, y});
+                }
+            } else if (type === 'pair_front') {
+                // ペア前後重なり2列
+                for(let i=0; i<totalCount; i++) {
+                    let isBack = i >= 35; let idx = i % 35;
+                    let x = 130 + idx * 16;
+                    let y = isBack ? 420 : 260;
+                    baseCoords.push({x, y});
+                }
+            } else if (type === 'pair_face') {
+                // ペア対面（左右に分かれて向き合う）
+                for(let i=0; i<totalCount; i++) {
+                    let isRight = i >= 35; let idx = i % 35;
+                    let x = isRight ? 560 + (idx%5)*30 : 140 + (idx%5)*30;
+                    let y = 180 + Math.floor(idx/5)*50;
+                    baseCoords.push({x, y});
+                }
             }
 
-            // 2. 🤖 AIアルゴリズム: 登録されているペアリストをルックアップし、配列の隣り同士になるようにインデックスをソートマッピング
-            let unassigned = [];
-            for(let i=1; i<=totalCount; i++) unassigned.push(i);
-
+            // ペア並び順のソート流し込みロジック (ペアパート用)
             let orderedMembers = [];
-            // ペアを優先的に隣り合わせの席に詰める
-            registeredPairs.forEach(pair => {
-                if(unassigned.includes(pair[0]) && unassigned.includes(pair[1])) {
-                    orderedMembers.push(pair[0]); orderedMembers.push(pair[1]);
-                    unassigned = unassigned.filter(m => m !== pair[0] && m !== pair[1]);
-                }
-            });
-            // 残ったピンのメンバーを後ろに結合
-            orderedMembers = [...orderedMembers, ...unassigned];
+            if(['pair_side', 'pair_front', 'pair_face'].includes(type)) {
+                let unassigned = []; for(let i=1; i<=totalCount; i++) unassigned.push(i);
+                registeredPairs.forEach(pair => {
+                    if(unassigned.includes(pair[0]) && unassigned.includes(pair[1])) {
+                        orderedMembers.push(pair[0]); orderedMembers.push(pair[1]);
+                        unassigned = unassigned.filter(m => m !== pair[0] && m !== pair[1]);
+                    }
+                });
+                orderedMembers = [...orderedMembers, ...unassigned];
+            } else {
+                for(let i=1; i<=totalCount; i++) orderedMembers.push(i);
+            }
 
-            // 3. 確定したAIソート順に、ベースライン座標を流し込む
             orderedMembers.forEach((mNum, idx) => {
-                if(idx < baseCoords.length) {
-                    currentForm.positions.push({ memberNumber: mNum, x: baseCoords[idx].x, y: baseCoords[idx].y });
-                }
+                if(idx < baseCoords.length) currentForm.positions.push({ memberNumber: mNum, x: baseCoords[idx].x, y: baseCoords[idx].y });
             });
-
-            selectedNumbers = [];
-            updateUI();
+            selectedNumbers = []; updateUI();
         };
 
-        // 初期ロード
         loadFromCloud();
         requestAnimationFrame(syncLoopRender);
     </script>
