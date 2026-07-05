@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>ダンスフォーメーションアプリ - Unlimited Next Pro</title>
+    <title>ダンスフォーメーション</title>
     <style>
         /* === 全体共通スタイル === */
         * { box-sizing: border-box; font-family: 'Helvetica Neue', Arial, sans-serif; margin: 0; padding: 0; user-select: none; }
@@ -13,12 +13,12 @@
         body.perf-theme { --bg-primary: #f8fafc; --bg-secondary: #ffffff; --bg-tertiary: #f1f5f9; --text-main: #1e293b; --text-sub: #64748b; --border-color: #cbd5e1; --accent-color: #ea580c; --header-bg: #15803d; }
         body { background-color: var(--bg-primary); color: var(--text-main); }
 
-        .top-banner { background: var(--header-bg); color: white; padding: 10px 20px; text-align: center; font-weight: bold; font-size: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.2); z-index: 100; display: flex; justify-content: center; align-items: center; gap: 10px; }
-        .app-header { background-color: var(--bg-secondary); border-bottom: 1px solid var(--border-color); padding: 8px 16px; display: flex; justify-content: space-between; align-items: center; height: 50px; z-index: 10; }
-        .app-title { font-size: 16px; font-weight: bold; display: flex; align-items: center; gap: 8px; }
-        .header-actions { display: flex; gap: 6px; align-items: center; }
+        .top-banner { background: var(--header-bg); color: white; padding: 10px 20px; text-align: center; font-weight: bold; font-size: 14px; box-shadow: 0 2px 5px rgba(0,0,0,0.2); z-index: 100; display: flex; justify-content: center; align-items: center; gap: 10px; }
+        .app-header { background-color: var(--bg-secondary); border-bottom: 1px solid var(--border-color); padding: 8px 12px; display: flex; justify-content: space-between; align-items: center; min-height: 50px; z-index: 10; flex-wrap: wrap; gap: 8px; }
+        .app-title { font-size: 15px; font-weight: bold; display: flex; align-items: center; gap: 6px; }
+        .header-actions { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
         
-        .btn { background-color: var(--bg-tertiary); color: var(--text-main); border: 1px solid var(--border-color); padding: 6px 12px; border-radius: 6px; font-size: 12px; font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 4px; transition: all 0.2s; }
+        .btn { background-color: var(--bg-tertiary); color: var(--text-main); border: 1px solid var(--border-color); padding: 6px 10px; border-radius: 6px; font-size: 11px; font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 4px; transition: all 0.2s; white-space: nowrap; }
         .btn:hover { opacity: 0.9; background-color: var(--border-color); }
         .btn-primary { background-color: #2563eb; color: white; border: none; }
         .btn-success { background-color: #10b981; color: white; border: none; }
@@ -26,50 +26,50 @@
         .btn-orange { background-color: #ea580c; color: white; border: none; }
         .btn-purple { background-color: #8b5cf6; color: white; border: none; }
 
-        .main-container { flex: 1; display: flex; overflow: hidden; position: relative; }
-        .sidebar { width: 260px; background-color: var(--bg-secondary); border-right: 1px solid var(--border-color); padding: 12px; display: flex; flex-direction: column; gap: 14px; overflow-y: auto; }
+        .main-container { flex: 1; display: flex; overflow: hidden; position: relative; flex-direction: row; }
+        .sidebar { width: 260px; background-color: var(--bg-secondary); border-right: 1px solid var(--border-color); padding: 12px; display: flex; flex-direction: column; gap: 14px; overflow-y: auto; flex-shrink: 0; }
         .sidebar-section { display: flex; flex-direction: column; gap: 6px; }
         .section-title { font-size: 11px; font-weight: bold; color: var(--text-sub); text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid var(--border-color); padding-bottom: 4px; }
         
-        .stage-area { flex: 1; background-color: #0b0f19; display: flex; justify-content: center; align-items: center; padding: 10px; position: relative; overflow: hidden; }
+        .stage-area { flex: 1; background-color: #0b0f19; display: flex; justify-content: center; align-items: center; padding: 10px; position: relative; overflow: hidden; height: 100%; }
         canvas { background-color: #1a1f2c; border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); max-width: 100%; max-height: 100%; aspect-ratio: 4/3; cursor: grab; touch-action: none; }
         canvas:active { cursor: grabbing; }
 
         /* オーバーレイ表示 */
-        .memo-overlay { position: absolute; top: 15px; right: 15px; width: 220px; background: rgba(0, 0, 0, 0.8); backdrop-filter: blur(4px); border: 1px solid #444; border-radius: 8px; padding: 12px; color: white; z-index: 5; }
+        .memo-overlay { position: absolute; top: 10px; right: 10px; width: 180px; background: rgba(0, 0, 0, 0.8); backdrop-filter: blur(4px); border: 1px solid #444; border-radius: 8px; padding: 10px; color: white; z-index: 5; }
         body.perf-theme .memo-overlay { background: rgba(255, 255, 255, 0.95); border: 1px solid #cbd5e1; color: #1e293b; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
-        .memo-title { font-size: 11px; font-weight: bold; color: var(--text-sub); margin-bottom: 4px; }
-        .memo-body { font-size: 13px; font-weight: bold; color: #f59e0b; min-height: 35px; white-space: pre-wrap; }
+        .memo-title { font-size: 10px; font-weight: bold; color: var(--text-sub); margin-bottom: 2px; }
+        .memo-body { font-size: 12px; font-weight: bold; color: #f59e0b; min-height: 25px; white-space: pre-wrap; }
         body.perf-theme .memo-body { color: #dc2626; }
 
         /* 周辺メンバー表示パネル */
-        .surround-overlay { position: absolute; top: 15px; left: 15px; width: 200px; background: rgba(0,0,0,0.8); border: 1px solid #444; border-radius: 8px; padding: 12px; color: white; z-index: 5; font-size: 12px; display: none; }
+        .surround-overlay { position: absolute; top: 10px; left: 10px; width: 180px; background: rgba(0,0,0,0.8); border: 1px solid #444; border-radius: 8px; padding: 10px; color: white; z-index: 5; font-size: 11px; display: none; }
         body.perf-theme .surround-overlay { display: block; background: rgba(255,255,255,0.95); border: 1px solid #cbd5e1; color: #1e293b; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
 
-        .bottom-controls { background-color: var(--bg-secondary); border-top: 1px solid var(--border-color); padding: 12px 16px; display: flex; flex-direction: column; gap: 10px; z-index: 10; }
-        .player-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
-        .time-display { font-family: monospace; font-size: 14px; font-weight: bold; color: var(--text-main); }
-        .seek-bar-container { flex: 1; min-width: 150px; display: flex; align-items: center; }
+        .bottom-controls { background-color: var(--bg-secondary); border-top: 1px solid var(--border-color); padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; z-index: 10; flex-shrink: 0; }
+        .player-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+        .time-display { font-family: monospace; font-size: 13px; font-weight: bold; color: var(--text-main); }
+        .seek-bar-container { flex: 1; min-width: 120px; display: flex; align-items: center; }
         .seek-bar { width: 100%; height: 6px; cursor: pointer; accent-color: var(--accent-color); }
 
         .timeline-scroll-wrap { position: relative; display: flex; align-items: center; width: 100%; }
-        .timeline-container { display: flex; gap: 10px; overflow-x: auto; width: 100%; padding: 4px 0; -webkit-overflow-scrolling: touch; }
-        .timeline-card { flex: 0 0 110px; background-color: var(--bg-tertiary); border: 2px solid var(--border-color); border-radius: 6px; overflow: hidden; cursor: pointer; transition: all 0.2s; position: relative; text-align: center; padding-bottom: 4px; }
-        .timeline-card.active { border-color: var(--accent-color); box-shadow: 0 0 8px rgba(37,99,235,0.4); }
-        body.perf-theme .timeline-card.active { box-shadow: 0 0 8px rgba(234,88,12,0.4); }
-        .thumb-preview { width: 100%; height: 50px; background-color: #111827; position: relative; border-bottom: 1px solid var(--border-color); }
-        .card-time { font-size: 10px; color: var(--text-sub); font-family: monospace; margin-top: 2px; }
-        .card-name { font-size: 11px; font-weight: bold; color: var(--text-main); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 0 4px; }
+        .timeline-container { display: flex; gap: 8px; overflow-x: auto; width: 100%; padding: 4px 0; -webkit-overflow-scrolling: touch; }
+        .timeline-card { flex: 0 0 95px; background-color: var(--bg-tertiary); border: 2px solid var(--border-color); border-radius: 6px; overflow: hidden; cursor: pointer; transition: all 0.2s; position: relative; text-align: center; padding-bottom: 2px; }
+        .timeline-card.active { border-color: var(--accent-color); box-shadow: 0 0 6px rgba(37,99,235,0.4); }
+        body.perf-theme .timeline-card.active { box-shadow: 0 0 6px rgba(234,88,12,0.4); }
+        .thumb-preview { width: 100%; height: 40px; background-color: #111827; position: relative; border-bottom: 1px solid var(--border-color); }
+        .card-time { font-size: 9px; color: var(--text-sub); font-family: monospace; margin-top: 1px; }
+        .card-name { font-size: 10px; font-weight: bold; color: var(--text-main); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 0 2px; }
         
-        .status-bar { background-color: var(--bg-tertiary); border-top: 1px solid var(--border-color); padding: 4px 16px; display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: var(--text-sub); font-weight: bold; }
+        .status-bar { background-color: var(--bg-tertiary); border-top: 1px solid var(--border-color); padding: 4px 12px; display: flex; justify-content: space-between; align-items: center; font-size: 11px; color: var(--text-sub); font-weight: bold; flex-shrink: 0; }
         .status-highlight { color: var(--accent-color); }
 
         /* ログイン画面 */
-        .login-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background-color: #0f172a; display: flex; justify-content: center; align-items: center; z-index: 999; padding: 20px; }
-        .login-card { background-color: white; padding: 30px; border-radius: 12px; width: 100%; max-width: 400px; box-shadow: 0 10px 25px rgba(0,0,0,0.3); text-align: center; }
-        .login-card h2 { color: #1e293b; margin-bottom: 20px; font-size: 20px; }
-        .login-tab { display: flex; margin-bottom: 20px; border-bottom: 2px solid #e2e8f0; }
-        .tab-btn { flex: 1; padding: 10px; border: none; background: none; font-weight: bold; color: #64748b; cursor: pointer; }
+        .login-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background-color: #0f172a; display: flex; justify-content: center; align-items: center; z-index: 999; padding: 15px; }
+        .login-card { background-color: white; padding: 24px; border-radius: 12px; width: 100%; max-width: 360px; box-shadow: 0 10px 25px rgba(0,0,0,0.3); text-align: center; }
+        .login-card h2 { color: #1e293b; margin-bottom: 16px; font-size: 22px; font-weight: bold; }
+        .login-tab { display: flex; margin-bottom: 16px; border-bottom: 2px solid #e2e8f0; }
+        .tab-btn { flex: 1; padding: 10px; border: none; background: none; font-weight: bold; color: #64748b; cursor: pointer; font-size: 14px; }
         .tab-btn.active { color: #2563eb; border-bottom: 2px solid #2563eb; margin-bottom: -2px; }
         .input-field { width: 100%; padding: 12px; border: 1px solid #cbd5e1; border-radius: 6px; margin-bottom: 15px; font-size: 14px; text-align: center; color: #1e293b; background: white; }
         .submit-btn { width: 100%; padding: 12px; background-color: #2563eb; color: white; border: none; border-radius: 6px; font-weight: bold; font-size: 14px; cursor: pointer; }
@@ -79,11 +79,22 @@
         body.fullscreen-mode .top-banner, body.fullscreen-mode .app-header, body.fullscreen-mode .sidebar { display: none !important; }
         body.fullscreen-mode .stage-area { height: 100vh; width: 100vw; padding: 0; }
         body.fullscreen-mode canvas { border-radius: 0; width: 100vw; height: 100vh; }
-        .exit-fs-btn { position: absolute; top: 15px; left: 15px; z-index: 9999; display: none; }
+        .exit-fs-btn { position: absolute; top: 10px; left: 10px; z-index: 9999; display: none; }
         body.fullscreen-mode .exit-fs-btn { display: block; }
 
-        .pair-item { display: flex; justify-content: space-between; align-items: center; background: var(--bg-tertiary); padding: 4px 8px; border-radius: 4px; font-size: 12px; border: 1px solid var(--border-color); }
+        .pair-item { display: flex; justify-content: space-between; align-items: center; background: var(--bg-tertiary); padding: 4px 8px; border-radius: 4px; font-size: 11px; border: 1px solid var(--border-color); }
         .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
+
+        /* === 📱 スマホ専用レスポンシブ崩れ対策 === */
+        @media (max-width: 768px) {
+            .main-container { flex-direction: column; }
+            .sidebar { width: 100%; height: 160px; border-right: none; border-bottom: 1px solid var(--border-color); padding: 8px; gap: 10px; }
+            .stage-area { flex: 1; height: calc(100% - 160px); padding: 4px; }
+            .app-header { padding: 6px; }
+            .header-actions .btn { padding: 4px 8px; font-size: 10px; }
+            .memo-overlay, .surround-overlay { width: 130px; font-size: 10px; padding: 6px; }
+            .memo-body { font-size: 11px; min-height: 15px; }
+        }
     </style>
 </head>
 <body class="admin-theme">
@@ -94,7 +105,7 @@
 
     <div id="login-screen" class="login-overlay">
         <div class="login-card">
-            <h2>🕺 フォーメーションエディタ Next Pro</h2>
+            <h2>💃 ダンスフォーメーション</h2>
             <div class="login-tab">
                 <button id="tab-perf" class="tab-btn active" onclick="switchLoginTab('perf')">📱 出演者</button>
                 <button id="tab-admin" class="tab-btn" onclick="switchLoginTab('admin')">🛠️ 管理者</button>
@@ -104,7 +115,7 @@
                 <button class="submit-btn" style="background-color: #ea580c;" onclick="loginAsPerformer()">マイ画面を開く</button>
             </div>
             <div id="form-admin" style="display: none;">
-                <input type="password" id="admin-password" class="input-field" placeholder="管理用パスワード">
+                <input type="password" id="admin-password" class="input-field" placeholder="管理用パスワード" autocomplete="new-password">
                 <button class="submit-btn" onclick="loginAsAdmin()">ログイン</button>
             </div>
         </div>
@@ -113,7 +124,7 @@
     <div class="app-header">
         <div class="app-title">
             <span id="app-logo-icon">🛠️</span>
-            <span id="app-title-text">ダンスフォーメーションエディタ</span>
+            <span id="app-title-text">ダンスフォーメーション</span>
         </div>
         <div class="header-actions">
             <button id="flip-view-btn" class="btn btn-orange" onclick="toggleFlipView()">🪞 視点反転: 客席正面</button>
@@ -272,7 +283,7 @@
         let memberColors = {};
         let memberNames = {};
         let registeredPairs = [[1,2], [28,30], [15,16]]; 
-        let customTemplates = []; // ユーザー独自保存テンプレート
+        let customTemplates = []; 
 
         let formations = [
             { id: 'f1', name: 'コマ1', memo: 'オープニング位置', time: 0.0, positions: [] }
@@ -343,7 +354,12 @@
             } else { alert('パスワードが違います'); }
         }
 
-        function logout() { audio.pause(); document.getElementById('login-screen').style.display = 'flex'; }
+        // ログアウト時にパスワード入力を必須にするため完全に初期化
+        function logout() { 
+            audio.pause(); 
+            document.getElementById('admin-password').value = ''; 
+            document.getElementById('login-screen').style.display = 'flex'; 
+        }
 
         function setupTheme() {
             const body = document.body;
@@ -354,7 +370,7 @@
                 document.getElementById('edit-memo-btn').style.display = 'block';
                 document.getElementById('audio-mark-btn').style.display = 'block';
                 document.getElementById('app-logo-icon').innerText = "🛠️";
-                document.getElementById('app-title-text').innerText = "ダンスフォーメーションエディタ";
+                document.getElementById('app-title-text').innerText = "ダンスフォーメーション";
             } else {
                 body.className = 'perf-theme';
                 document.getElementById('top-banner').innerHTML = `<span>📱 出演者マイ画面 (${myMemberNumber}番) - 移動ガイド表示中</span>`;
@@ -367,6 +383,7 @@
             selectedNumbers = [];
             renderPairListUI();
             renderCustomTemplateListUI();
+            resizeCanvas();
             updateUI();
         }
 
@@ -388,23 +405,18 @@
             document.getElementById('sym-assist-btn').innerText = symmetryAssist ? '⚖️ 左右対称補正: ON' : '⚖️ 左右対称補正: OFF';
         }
 
-        // 下絵画像の読み込み
         function loadBackgroundImage(input) {
             const file = input.files[0];
             if (!file) return;
             const reader = new FileReader();
             reader.onload = function(e) {
                 const img = new Image();
-                img.onload = function() {
-                    backgroundImage = img;
-                    draw();
-                };
+                img.onload = function() { backgroundImage = img; draw(); };
                 img.src = e.target.result;
             };
             reader.readAsDataURL(file);
         }
 
-        // 今の配置をカスタムテンプレート化
         function saveCurrentAsCustomTemplate() {
             const name = prompt("作成したテンプレートの名前を入力してください:", `マイテンプレート ${customTemplates.length + 1}`);
             if (!name) return;
@@ -425,8 +437,7 @@
 
         function renderCustomTemplateListUI() {
             const container = document.getElementById('custom-template-list');
-            if(!container) return;
-            container.innerHTML = '';
+            if(!container) return; container.innerHTML = '';
             customTemplates.forEach((temp, idx) => {
                 const btn = document.createElement('button');
                 btn.className = 'btn btn-purple';
@@ -540,7 +551,7 @@
                 const thumb = document.createElement('div'); thumb.className = 'thumb-preview';
                 form.positions.slice(0, 15).forEach(p => {
                     const d = document.createElement('div');
-                    d.style.position = 'absolute'; d.style.width = '3px'; d.style.height = '3px';
+                    d.style.position = 'absolute'; d.style.width = '2px'; d.style.height = '2px';
                     d.style.borderRadius = '50%'; d.style.left = `${(p.x/1000)*100}%`; d.style.top = `${(p.y/1000)*100}%`;
                     d.style.background = memberColors[p.memberNumber] || '#3b82f6';
                     thumb.appendChild(d);
@@ -689,7 +700,6 @@
         function syncLoopRender() { pulseRadius = (pulseRadius + 0.35) % 20; draw(); requestAnimationFrame(syncLoopRender); }
 
         function renderPositionsAll(startPos, endPos, ease) {
-            canvas.width = 800; canvas.height = 600;
             ctx.clearRect(0, 0, 800, 600);
             ctx.save();
 
@@ -698,7 +708,6 @@
             if(isFlipped) ctx.rotate(Math.PI);
             ctx.translate(-400, -300);
 
-            // 背景下絵画像がある場合は描写
             if (backgroundImage) {
                 ctx.drawImage(backgroundImage, 0, 0, 800, 600);
             } else {
@@ -712,13 +721,11 @@
                 }
             }
 
-            // センター十字ガイド線
             ctx.strokeStyle = 'rgba(239, 68, 68, 0.25)'; ctx.lineWidth = 1.5;
             ctx.setLineDash([4, 4]); ctx.beginPath(); ctx.moveTo(400, 50); ctx.lineTo(400, 550); ctx.stroke(); ctx.setLineDash([]);
             ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)'; ctx.lineWidth = 2;
             ctx.beginPath(); ctx.moveTo(30, 530); ctx.lineTo(770, 530); ctx.stroke();
 
-            // メンバー描写
             for (let i = 1; i <= totalCount; i++) {
                 const sP = startPos.find(p => p.memberNumber === i);
                 const eP = endPos ? endPos.find(p => p.memberNumber === i) : null;
@@ -769,22 +776,32 @@
             }
         }
 
+        // 移動・タッチ座標計算のバグ修正
         function getCoordinates(e) {
             const rect = canvas.getBoundingClientRect();
             const clientX = e.touches ? e.touches[0].clientX : e.clientX;
             const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+            
+            // 画面サイズに対する実Canvas上の比率計算
             const canvasX = ((clientX - rect.left) / rect.width) * 800;
             const canvasY = ((clientY - rect.top) / rect.height) * 600;
+            
             let tx = canvasX - 400 - offsetX; let ty = canvasY - 300 - offsetY;
             tx /= zoom; ty /= zoom; if (isFlipped) { tx = -tx; ty = -ty; }
             tx += 400; ty += 300;
+            
             return { dataX: tx * (1000 / 800), dataY: ty * (1000 / 600), canvasX, canvasY };
         }
 
         function handleStart(e) {
             const coords = getCoordinates(e);
             const currentForm = formations[currentFrameIndex];
-            const hit = currentForm.positions.find(p => Math.sqrt(Math.pow((p.x / 1000 * 800) - (coords.dataX / 1000 * 800), 2) + Math.pow((p.y / 1000 * 600) - (coords.dataY / 1000 * 600), 2)) < 25);
+            
+            // タップ判定を1000x1000データ空間上で行う
+            const hit = currentForm.positions.find(p => {
+                let dist = Math.sqrt(Math.pow(p.x - coords.dataX, 2) + Math.pow(p.y - coords.dataY, 2));
+                return dist < 35; // 当たり判定範囲
+            });
 
             if (userRole === 'admin' && hit && currentTool === 'select') {
                 dragMode = 'move_member'; draggedNumber = hit.memberNumber;
@@ -802,6 +819,7 @@
         }
 
         function handleMove(e) {
+            if (dragMode === null) return;
             const coords = getCoordinates(e);
             const currentForm = formations[currentFrameIndex];
 
@@ -845,12 +863,16 @@
             dragMode = null; draggedNumber = null; isPanning = false; isSelecting = false; updateUI();
         }
 
+        function resizeCanvas() {
+            canvas.width = 800; canvas.height = 600; draw();
+        }
+
+        window.addEventListener('resize', resizeCanvas);
         canvas.addEventListener('mousedown', handleStart); canvas.addEventListener('mousemove', handleMove); canvas.addEventListener('mouseup', handleEnd); canvas.addEventListener('mouseleave', handleEnd);
         canvas.addEventListener('touchstart', handleStart, { passive: false }); canvas.addEventListener('touchmove', handleMove, { passive: false }); canvas.addEventListener('touchend', handleEnd);
         canvas.addEventListener('wheel', e => { e.preventDefault(); if (e.deltaY < 0) zoom = Math.min(4.0, zoom * 1.05); else zoom = Math.max(0.6, zoom / 1.05); }, { passive: false });
-        function toggleFullScreen() { document.body.classList.toggle('fullscreen-mode'); offsetX = 0; offsetY = 0; zoom = 1.0; draw(); }
+        function toggleFullScreen() { document.body.classList.toggle('fullscreen-mode'); offsetX = 0; offsetY = 0; zoom = 1.0; resizeCanvas(); }
 
-        // 無限幾何学＆ペア連動テンプレートエンジン
         window.applyTemplate = function(type) {
             if(userRole !== 'admin') return;
             const currentForm = formations[currentFrameIndex];
@@ -862,28 +884,23 @@
             } else if (type === 'vertLine') {
                 for(let i=0; i<totalCount; i++) baseCoords.push({ x: 400, y: 150 + (i / (totalCount-1)) * 400 });
             } else if (type === 'circle_2') {
-                // 2重円 (内側30人、外側40人)
                 for(let i=0; i<30; i++) { let r = (i/30)*2*Math.PI; baseCoords.push({ x: 400 + Math.cos(r)*130, y: 350 + Math.sin(r)*110 }); }
                 for(let i=0; i<40; i++) { let r = (i/40)*2*Math.PI; baseCoords.push({ x: 400 + Math.cos(r)*240, y: 350 + Math.sin(r)*200 }); }
             } else if (type === 'circle_3') {
-                // 3重円 (内15人、中25人、外30人)
                 for(let i=0; i<15; i++) { let r = (i/15)*2*Math.PI; baseCoords.push({ x: 400 + Math.cos(r)*80, y: 350 + Math.sin(r)*70 }); }
                 for(let i=0; i<25; i++) { let r = (i/25)*2*Math.PI; baseCoords.push({ x: 400 + Math.cos(r)*160, y: 350 + Math.sin(r)*130 }); }
                 for(let i=0; i<30; i++) { let r = (i/30)*2*Math.PI; baseCoords.push({ x: 400 + Math.cos(r)*250, y: 350 + Math.sin(r)*210 }); }
             } else if (type === 'square_2') {
-                // 2重正方形
-                for(let i=0; i<28; i++) { // 内枠
-                    let rate = i / 28;
-                    let x = 300, y = 250;
+                for(let i=0; i<28; i++) {
+                    let rate = i / 28; let x = 300, y = 250;
                     if(rate < 0.25) { x = 300 + (rate/0.25)*200; y = 250; }
                     else if(rate < 0.5) { x = 500; y = 250 + ((rate-0.25)/0.25)*180; }
                     else if(rate < 0.75) { x = 500 - ((rate-0.5)/0.25)*200; y = 430; }
                     else { x = 300; y = 430 - ((rate-0.75)/0.25)*180; }
                     baseCoords.push({x, y});
                 }
-                for(let i=0; i<42; i++) { // 外枠
-                    let rate = i / 42;
-                    let x = 180, y = 150;
+                for(let i=0; i<42; i++) {
+                    let rate = i / 42; let x = 180, y = 150;
                     if(rate < 0.25) { x = 180 + (rate/0.25)*440; y = 150; }
                     else if(rate < 0.5) { x = 620; y = 150 + ((rate-0.25)/0.25)*360; }
                     else if(rate < 0.75) { x = 620 - ((rate-0.5)/0.25)*440; y = 510; }
@@ -891,15 +908,12 @@
                     baseCoords.push({x, y});
                 }
             } else if (type === 'radial') {
-                // 放射線状 (8方向の矢印ライン)
                 for(let i=0; i<totalCount; i++) {
                     let lineIdx = i % 8; let step = Math.floor(i / 8);
-                    let angle = (lineIdx / 8) * 2 * Math.PI;
-                    let dist = 50 + step * 48;
+                    let angle = (lineIdx / 8) * 2 * Math.PI; let dist = 50 + step * 48;
                     baseCoords.push({ x: 400 + Math.cos(angle)*dist*1.2, y: 330 + Math.sin(angle)*dist });
                 }
             } else if (type === 'triangles') {
-                // 複合三角形 (4つのミニ三角形塊)
                 let centers = [{x:250, y:230}, {x:550, y:230}, {x:250, y:450}, {x:550, y:450}];
                 for(let i=0; i<totalCount; i++) {
                     let c = centers[i % 4]; let s = Math.floor(i / 4);
@@ -907,31 +921,24 @@
                     baseCoords.push({ x: c.x + ox, y: c.y + oy });
                 }
             } else if (type === 'diamond') {
-                // ひし形フォーメーション
                 for(let i=0; i<totalCount; i++) {
-                    let rate = i / totalCount;
-                    let angle = rate * 2 * Math.PI;
+                    let rate = i / totalCount; let angle = rate * 2 * Math.PI;
                     let x = 400 + Math.sign(Math.cos(angle)) * Math.pow(Math.abs(Math.cos(angle)), 1) * 260;
                     let y = 330 + Math.sign(Math.sin(angle)) * Math.pow(Math.abs(Math.sin(angle)), 1) * 210;
                     baseCoords.push({x, y});
                 }
             } else if (type === 'cross_x') {
-                // X字クロスライン
                 for(let i=0; i<35; i++) baseCoords.push({ x: 180 + (i/34)*440, y: 150 + (i/34)*360 });
                 for(let i=0; i<35; i++) baseCoords.push({ x: 620 - (i/34)*440, y: 150 + (i/34)*360 });
             } else if (type === 'chidori_5') {
-                // 縦5列の互い違い千鳥
                 for(let i=0; i<totalCount; i++) {
                     let col = i % 5; let row = Math.floor(i / 5);
-                    let x = 180 + col * 110;
-                    let y = 160 + row * 34 + (col % 2 * 17);
+                    let x = 180 + col * 110; let y = 160 + row * 34 + (col % 2 * 17);
                     baseCoords.push({x, y});
                 }
             } else if (type === 'outer_box') {
-                // 大きな外周四角形一列
                 for(let i=0; i<totalCount; i++) {
-                    let rate = i / totalCount;
-                    let x = 120, y = 130;
+                    let rate = i / totalCount; let x = 120, y = 130;
                     if(rate < 0.25) { x = 120 + (rate/0.25)*560; y = 130; }
                     else if(rate < 0.5) { x = 680; y = 130 + ((rate-0.25)/0.25)*380; }
                     else if(rate < 0.75) { x = 680 - ((rate-0.5)/0.25)*560; y = 510; }
@@ -939,32 +946,25 @@
                     baseCoords.push({x, y});
                 }
             } else if (type === 'pair_side') {
-                // ペア横並び3列シート
                 for(let i=0; i<totalCount; i++) {
                     let row = Math.floor(i / 24); let col = i % 24;
-                    let x = 130 + col * 24 + (Math.floor(col/2)*12);
-                    let y = 220 + row * 70;
+                    let x = 130 + col * 24 + (Math.floor(col/2)*12); let y = 220 + row * 70;
                     baseCoords.push({x, y});
                 }
             } else if (type === 'pair_front') {
-                // ペア前後重なり2列
                 for(let i=0; i<totalCount; i++) {
                     let isBack = i >= 35; let idx = i % 35;
-                    let x = 130 + idx * 16;
-                    let y = isBack ? 420 : 260;
+                    let x = 130 + idx * 16; let y = isBack ? 420 : 260;
                     baseCoords.push({x, y});
                 }
             } else if (type === 'pair_face') {
-                // ペア対面（左右に分かれて向き合う）
                 for(let i=0; i<totalCount; i++) {
                     let isRight = i >= 35; let idx = i % 35;
-                    let x = isRight ? 560 + (idx%5)*30 : 140 + (idx%5)*30;
-                    let y = 180 + Math.floor(idx/5)*50;
+                    let x = isRight ? 560 + (idx%5)*30 : 140 + (idx%5)*30; let y = 180 + Math.floor(idx/5)*50;
                     baseCoords.push({x, y});
                 }
             }
 
-            // ペア並び順のソート流し込みロジック (ペアパート用)
             let orderedMembers = [];
             if(['pair_side', 'pair_front', 'pair_face'].includes(type)) {
                 let unassigned = []; for(let i=1; i<=totalCount; i++) unassigned.push(i);
@@ -986,6 +986,7 @@
         };
 
         loadFromCloud();
+        resizeCanvas();
         requestAnimationFrame(syncLoopRender);
     </script>
 </body>
