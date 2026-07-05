@@ -7,8 +7,7 @@
     
     <script>
         // ==========================================================
-        // 🌐 【自動連動設定完了】
-        // MyJsonのURLを埋め込みました。これでGitHubの書き換えは不要になります！
+        // 🌐 【自動連動設定】通信エラー対策版URL
         // ==========================================================
         const BIN_URL = "https://myjson.online/api/quick/6a38443c-8dd8-438b-ba51-7fa64b50cb81";
         // ==========================================================
@@ -189,6 +188,7 @@
         async function loadFromCloudJSON() {
             if(!BIN_URL || BIN_URL.includes("ここにMyJson")) { initPositions(); buildDropdown(); updateUI(); return; }
             try {
+                // 読み込み時はそのままでOK
                 const res = await fetch(BIN_URL);
                 const resData = await res.json();
                 const data = resData.data;
@@ -203,8 +203,13 @@
             if(userRole !== 'admin') return;
             if(!BIN_URL || BIN_URL.includes("ここにMyJson")) return alert("URLを設定してください");
             const btn = document.getElementById('cloud-sync-btn'); btn.innerText = "⏳ 保存中...";
+            
+            // 🛠️ 通信エラー対策：URLの末尾の「/」の有無を自動調整します
+            let saveUrl = BIN_URL;
+            if(saveUrl.endsWith('/')) { saveUrl = saveUrl.slice(0, -1); }
+
             try {
-                const res = await fetch(BIN_URL, {
+                const res = await fetch(saveUrl, {
                     method: "PUT",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ data: { formations, memberNames, memberColors, totalCount } })
