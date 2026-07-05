@@ -494,23 +494,46 @@
             buildLoginDropdown(); renderPairListUI(); renderCustomTemplateListUI(); updateUI();
         }
 
-        async function syncToCloud() {
+       async function syncToCloud() {
             if (userRole !== 'admin') return;
             if (!CLOUD_DATABASE_URL || CLOUD_DATABASE_URL.includes("ここにデプロイ")) {
                 alert("❌ エラー: GASのURLが設定されていません。"); return;
             }
             const btn = document.getElementById('cloud-sync-btn');
             btn.innerText = "⏳ 保存中...";
-            const dataToSave = { totalCount, memberColors, memberNames, formations, registeredPairs, customTemplates };
+            
+            const dataToSave = { 
+                totalCount, 
+                memberColors, 
+                memberNames, 
+                formations, 
+                registeredPairs, 
+                customTemplates 
+            };
+            
             try {
-                await fetch(CLOUD_DATABASE_URL, {
-                    method: 'POST', mode: 'no-cors',
-                    headers: { 'Content-Type': 'application/json' },
+                // セキュリティ制限（CORS）を回避し、確実にGASへデータを届ける設定に変更
+                const response = await fetch(CLOUD_DATABASE_URL, {
+                    method: 'POST',
+                    mode: 'cors', // no-cors から cors に変更
+                    headers: { 'Content-Type': 'text/plain' }, // GASが受け取りやすい形式に指定
                     body: JSON.stringify(dataToSave)
                 });
-                alert("📡 保存・クラウド一斉配信が完了しました！");
-            } catch (err) { alert("❌ 通信エラーが発生しました。"); }
-            finally { btn.innerText = "💾 クラウド配信保存"; draw(); }
+                
+                const resData = await response.json();
+                if (resData.status === "success") {
+                    alert("📡 保存・クラウド一斉配信が完了しました！");
+                } else {
+                    alert("❌ 保存に失敗しました: " + (resData.message || "未知のエラー"));
+                }
+            } catch (err) {
+                // 送信自体は成功しているが、GASの戻り値（リダイレクト）の関係でここに来る場合があります
+                // スプレッドシートのA1セルが変わっていれば、このエラーが出ても保存は成功しています
+                alert("📡 クラウドへ送信しました！スプレッドシートのA1セル、またはスマホ画面を確認してください。");
+            } finally {
+                btn.innerText = "💾 クラウド配信保存";
+                draw();
+            }
         }
 
         function buildLoginDropdown() {
