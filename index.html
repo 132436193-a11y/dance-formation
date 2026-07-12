@@ -19,7 +19,8 @@
         .header-actions { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
         
         .btn { background-color: var(--bg-tertiary); color: var(--text-main); border: 1px solid var(--border-color); padding: 6px 10px; border-radius: 6px; font-size: 11px; font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 4px; transition: all 0.2s; white-space: nowrap; }
-        .btn:hover { opacity: 0.9; background-color: var(--border-color); }
+        .btn:hover:not(:disabled) { opacity: 0.9; background-color: var(--border-color); }
+        .btn:disabled { opacity: 0.4; cursor: not-allowed; }
         .btn-primary { background-color: #2563eb; color: white; border: none; }
         .btn-success { background-color: #10b981; color: white; border: none; }
         .btn-danger { background-color: #ef4444; color: white; border: none; }
@@ -85,7 +86,7 @@
         .pair-item { display: flex; justify-content: space-between; align-items: center; background: var(--bg-tertiary); padding: 4px 8px; border-radius: 4px; font-size: 11px; border: 1px solid var(--border-color); }
         .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
 
-        /* === スマホ専用レスポンシブ崩れ対策 === */
+        /* === 📱 スマホ専用レスポンシブ崩れ対策 === */
         @media (max-width: 768px) {
             .main-container { flex-direction: column; }
             .sidebar { width: 100%; height: 160px; border-right: none; border-bottom: 1px solid var(--border-color); padding: 8px; gap: 10px; }
@@ -143,6 +144,11 @@
                     <button id="tool-select" class="btn btn-primary" onclick="setTool('select')">⬈ 選択移動</button>
                     <button id="tool-box" class="btn" onclick="setTool('box')">🔲 範囲選択</button>
                 </div>
+                <!-- ↩ 戻る / ↪ 進む ボタンを追加 -->
+                <div class="grid-2">
+                    <button id="btn-undo" class="btn" onclick="undo()" disabled>↩ 戻る</button>
+                    <button id="btn-redo" class="btn" onclick="redo()" disabled>↪ 進む</button>
+                </div>
                 <div class="grid-2">
                     <button class="btn btn-success" onclick="addNewFrame()">＋ コマ追加</button>
                     <button class="btn btn-danger" onclick="deleteCurrentFrame()">× コマ削除</button>
@@ -175,13 +181,13 @@
             </div>
 
             <div class="sidebar-section">
-                <div class="section-title">👥 基本 & ペアダンス用</div>
+                <div class="section-title">¼ 舞台・ペア用</div>
                 <div class="grid-2">
                     <button onclick="applyTemplate('line')" class="btn">横一列</button>
                     <button onclick="applyTemplate('vertLine')" class="btn">縦一列</button>
-                    <button onclick="applyTemplate('pair_side')" class="btn" style="background:#2e1065; color:white;">👫 ペア横並び</button>
-                    <button onclick="applyTemplate('pair_front')" class="btn" style="background:#2e1065; color:white;">↕ ペア前後2列</button>
-                    <button onclick="applyTemplate('pair_face')" class="btn" style="background:#2e1065; color:white;">⚔ ペア対面</button>
+                    <button onclick="applyTemplate('pair_side')" class="btn">👫 ペア横並び</button>
+                    <button onclick="applyTemplate('pair_front')" class="btn">↕ ペア前後2列</button>
+                    <button onclick="applyTemplate('pair_face')" class="btn">⚔ ペア対面</button>
                 </div>
             </div>
 
@@ -272,6 +278,7 @@
         let myMemberNumber = 28;
         let isFlipped = false; 
         let symmetryAssist = false; 
+        let backgroundImage = null;
 
         const CLOUD_DATABASE_URL = "ここにデプロイしたURLを貼り付けます";
 
@@ -289,31 +296,32 @@
         let currentPlaybackSpeed = 1.0;
         let currentTool = 'select'; 
         
+        // === ↩ 履歴（Undo/Redo）管理用スタック ===
+        let undoStack = [];
+        let redoStack = [];
+
         const audio = document.getElementById('main-audio');
+        const canvas = document.getElementById('stageCanvas');
+        const ctx = canvas.getContext('2d');
         let isAudioLoaded = false;
 
-        let zoom = 1.0; let offsetX = 0; let offsetY = 0;
-        let isPanning = false; let startPanX = 0, startPanY = 0;
+        const BASE_WIDTH = 800;
+        const BASE_HEIGHT = 600;
 
-        let backgroundImage = null;
-
-        let isSelecting = false;
-        let selectStart = {dataX:0, dataY:0, canvasX:0, canvasY:0};
-        let selectEnd = {dataX:0, dataY:0, canvasX:0, canvasY:0};
         let selectedNumbers = [];
         let dragStartPositions = [];
         let draggedNumber = null;
         let dragMode = null; 
-
+        let selectStart = {x: 0, y: 0};
+        let selectEnd = {x: 0, y: 0};
+        let isSelecting = false;
         let pulseRadius = 0;
-        const canvas = document.getElementById('stageCanvas');
-        const ctx = canvas.getContext('2d');
 
         function initInitialPositions() {
             formations[0].positions = [];
             for(let i = 0; i < totalCount; i++) {
-                let x = 200 + (i % 10) * 45;
-                let y = 250 + Math.floor(i / 10) * 50;
+                let x = 160 + (i % 10) * 55;
+                let y = 180 + Math.floor(i / 10) * 55;
                 formations[0].positions.push({ memberNumber: i + 1, x, y });
             }
             for(let i = 1; i <= totalCount; i++) {
@@ -373,6 +381,7 @@
                 document.getElementById('app-title-text').innerText = `出演者画面: ${myMemberNumber}番`;
             }
             selectedNumbers = [];
+            clearHistory(); // ロール切り替え時にスタックをリセット
             renderPairListUI();
             renderCustomTemplateListUI();
             resizeCanvas();
@@ -389,6 +398,7 @@
             isFlipped = !isFlipped;
             document.getElementById('flip-view-btn').innerText = isFlipped ? "🪞 視点反転: ステージ奥目線" : "🪞 視点反転: 客席正面";
             draw();
+            if(userRole === 'performer') updateUI();
         }
 
         function toggleSymmetryAssist() {
@@ -422,6 +432,7 @@
             const currentForm = formations[currentFrameIndex];
             const temp = customTemplates[idx];
             if(!temp) return;
+            saveHistory(); // 操作前に履歴を保存
             currentForm.positions = temp.positions.map(p => ({...p}));
             selectedNumbers = [];
             updateUI();
@@ -449,11 +460,13 @@
             document.getElementById('pair-p1').value = '';
             document.getElementById('pair-p2').value = '';
             renderPairListUI();
+            draw();
         }
 
         function removePair(idx) {
             registeredPairs.splice(idx, 1);
             renderPairListUI();
+            draw();
         }
 
         function renderPairListUI() {
@@ -463,18 +476,600 @@
                 const item = document.createElement('div');
                 item.className = 'pair-item';
                 item.innerHTML = `<span>👫 ${pair[0]}番 × ${pair[1]}番</span><span style="color:#ef4444; cursor:pointer;" onclick="removePair(${idx})">×</span>`;
-                item.onclick = (e) => {
-                    if(e.target.innerText === '×') return;
-                    selectedNumbers = [pair[0], pair[1]];
-                    updateUI();
-                };
                 container.appendChild(item);
             });
         }
 
+        function buildLoginDropdown() {
+            const select = document.getElementById('login-number-select');
+            if(!select) return; select.innerHTML = '';
+            for(let i = 1; i <= totalCount; i++) {
+                const opt = document.createElement('option'); opt.value = i;
+                opt.innerText = memberNames[i] ? `${i}番 (${memberNames[i]})` : `${i}番`;
+                select.appendChild(opt);
+            }
+        }
+
+        // === ↩ 履歴管理エンジン（Undo / Redo） ===
+        function saveHistory() {
+            const currentForm = formations[currentFrameIndex];
+            if (!currentForm) return;
+            // 現在の配置情報をディープコピーしてUndoスタックへプッシュ
+            undoStack.push(JSON.stringify(currentForm.positions));
+            // 新規操作が行われたためRedoスタックはクリア
+            redoStack = [];
+            updateUndoRedoButtonsUI();
+        }
+
+        function undo() {
+            if (undoStack.length === 0) return;
+            const currentForm = formations[currentFrameIndex];
+            if (!currentForm) return;
+
+            // 現在の状態をRedoスタックに退避
+            redoStack.push(JSON.stringify(currentForm.positions));
+            // Undoからポップして座標を復元
+            currentForm.positions = JSON.parse(undoStack.pop());
+            
+            updateUndoRedoButtonsUI();
+            updateUI();
+        }
+
+        function redo() {
+            if (redoStack.length === 0) return;
+            const currentForm = formations[currentFrameIndex];
+            if (!currentForm) return;
+
+            // 現在の状態をUndoスタックに積む
+            undoStack.push(JSON.stringify(currentForm.positions));
+            // Redoからポップして座標を復元
+            currentForm.positions = JSON.parse(redoStack.pop());
+
+            updateUndoRedoButtonsUI();
+            updateUI();
+        }
+
+        function clearHistory() {
+            undoStack = [];
+            redoStack = [];
+            updateUndoRedoButtonsUI();
+        }
+
+        function updateUndoRedoButtonsUI() {
+            const undoBtn = document.getElementById('btn-undo');
+            const redoBtn = document.getElementById('btn-redo');
+            if (undoBtn) undoBtn.disabled = (undoStack.length === 0);
+            if (redoBtn) redoBtn.disabled = (redoStack.length === 0);
+        }
+
+        // === 🛠️ コマ（タイムライン）編集処理 ===
+        function updateUI() {
+            const currentForm = formations[currentFrameIndex];
+            if(!currentForm) return;
+
+            document.getElementById('memo-header-title').innerText = `指示メモ (${currentForm.name})`;
+            document.getElementById('memo-body-text').innerText = currentForm.memo || '指示なし';
+
+            document.getElementById('status-frame').innerText = currentForm.name;
+            document.getElementById('status-time').innerText = formatTimeFull(currentForm.time);
+            document.getElementById('status-selected-info').innerText = (selectedNumbers.length > 0) ? `(選択:${selectedNumbers.length}人)` : '';
+
+            if(userRole === 'performer') calculateSurroundingMembers(currentForm.positions);
+
+            const container = document.getElementById('timeline-container');
+            container.innerHTML = '';
+            formations.forEach((form, idx) => {
+                const card = document.createElement('div');
+                card.className = `timeline-card ${idx === currentFrameIndex ? 'active' : ''}`;
+                card.onclick = () => selectFrame(idx);
+
+                const preview = document.createElement('div');
+                preview.className = 'thumb-preview';
+                
+                const timeStr = document.createElement('div');
+                timeStr.className = 'card-time';
+                timeStr.innerText = formatTimeFull(form.time);
+
+                const nameStr = document.createElement('div');
+                nameStr.className = 'card-name';
+                nameStr.innerText = form.name;
+
+                card.appendChild(preview);
+                card.appendChild(timeStr);
+                card.appendChild(nameStr);
+                container.appendChild(card);
+            });
+            draw();
+        }
+
+        function selectFrame(idx) {
+            currentFrameIndex = idx;
+            if(isAudioLoaded && formations[idx].time <= audio.duration) {
+                audio.currentTime = formations[idx].time;
+            }
+            selectedNumbers = [];
+            clearHistory(); // コマ移動時は履歴スタックを初期化
+            updateUI();
+        }
+
+        function addNewFrame() {
+            if(userRole !== 'admin') return;
+            const prevForm = formations[currentFrameIndex];
+            const newIdx = currentFrameIndex + 1;
+            const newForm = {
+                id: 'f' + (Date.now()),
+                name: `コマ${formations.length + 1}`,
+                memo: '',
+                time: isAudioLoaded ? audio.currentTime : prevForm.time + 2.0,
+                positions: prevForm.positions.map(p => ({...p}))
+            };
+            formations.splice(newIdx, 0, newForm);
+            sortFormations();
+            currentFrameIndex = formations.indexOf(newForm);
+            clearHistory();
+            updateUI();
+        }
+
+        function deleteCurrentFrame() {
+            if(userRole !== 'admin' || formations.length <= 1) return;
+            formations.splice(currentFrameIndex, 1);
+            currentFrameIndex = Math.max(0, currentFrameIndex - 1);
+            clearHistory();
+            updateUI();
+        }
+
+        function sortFormations() {
+            formations.sort((a, b) => a.time - b.time);
+        }
+
+        function promptEditMemo() {
+            if(userRole !== 'admin') return;
+            const form = formations[currentFrameIndex];
+            const newMemo = prompt("このコマの指示メモを入力してください:", form.memo);
+            if(newMemo !== null) {
+                form.memo = newMemo;
+                updateUI();
+            }
+        }
+
+        function markCurrentTime() {
+            if(userRole !== 'admin' || !isAudioLoaded) return;
+            formations[currentFrameIndex].time = audio.currentTime;
+            sortFormations();
+            updateUI();
+        }
+
+        // === 🧮 幾何学テンプレート適用エンジン ===
+        function applyTemplate(type) {
+            if(userRole !== 'admin') return;
+            const currentForm = formations[currentFrameIndex];
+            const cx = BASE_WIDTH / 2;
+            const cy = BASE_HEIGHT / 2;
+            
+            let targets = selectedNumbers.length > 0 ? selectedNumbers : currentForm.positions.map(p => p.memberNumber);
+            let count = targets.length;
+
+            saveHistory(); // テンプレート変形前に現在の状態を保存
+
+            targets.forEach((num, index) => {
+                let pos = currentForm.positions.find(p => p.memberNumber === num);
+                if(!pos) return;
+                
+                let t = index / Math.max(1, count - 1);
+                let angle = (index / count) * Math.PI * 2;
+
+                switch(type) {
+                    case 'line':
+                        pos.x = 100 + t * 600; pos.y = cy; break;
+                    case 'vertLine':
+                        pos.x = cx; pos.y = 80 + t * 440; break;
+                    case 'circle_2':
+                        let r = index % 2 === 0 ? 120 : 200;
+                        pos.x = cx + Math.cos(angle) * r; pos.y = cy + Math.sin(angle) * r; break;
+                    case 'circle_3':
+                        let r3 = index % 3 === 0 ? 90 : (index % 3 === 1 ? 160 : 230);
+                        pos.x = cx + Math.cos(angle) * r3; pos.y = cy + Math.sin(angle) * r3; break;
+                    case 'square_2':
+                        let sqR = index % 2 === 0 ? 120 : 200;
+                        let sqA = (Math.floor(index / 2) / Math.ceil(count / 2)) * Math.PI * 2;
+                        pos.x = cx + Math.max(-1, Math.min(1, Math.cos(sqA) * 1.5)) * sqR;
+                        pos.y = cy + Math.max(-1, Math.min(1, Math.sin(sqA) * 1.5)) * sqR;
+                        break;
+                    case 'radial':
+                        let radAngle = (Math.floor(index / 4) / Math.ceil(count / 4)) * Math.PI * 2;
+                        let radDist = 50 + (index % 4) * 55;
+                        pos.x = cx + Math.cos(radAngle) * radDist; pos.y = cy + Math.sin(radAngle) * radDist; break;
+                    case 'triangles':
+                        if(index % 3 === 0) { pos.x = cx + Math.cos(angle)*180; pos.y = cy - 100; }
+                        else if(index % 3 === 1) { pos.x = cx - 150 + Math.sin(angle)*50; pos.y = cy + 150; }
+                        else { pos.x = cx + 150 + Math.sin(angle)*50; pos.y = cy + 150; }
+                        break;
+                    case 'diamond':
+                        let dA = (index / count) * Math.PI * 2;
+                        pos.x = cx + Math.cos(dA) * 220; pos.y = cy + Math.sin(dA) * 160; break;
+                    case 'cross_x':
+                        let distX = (t - 0.5) * 500;
+                        if(index % 2 === 0) { pos.x = cx + distX; pos.y = cy + distX * 0.75; }
+                        else { pos.x = cx + distX; pos.y = cy - distX * 0.75; }
+                        break;
+                    case 'chidori_5':
+                        let col = index % 5; let row = Math.floor(index / 5);
+                        pos.x = 150 + col * 120 + (row % 2 === 0 ? 0 : 40);
+                        pos.y = 120 + row * 65; break;
+                    case 'outer_box':
+                        let perimeter = (index / count);
+                        if(perimeter < 0.25) { pos.x = 100 + (perimeter/0.25)*600; pos.y = 100; }
+                        else if(perimeter < 0.5) { pos.x = 700; pos.y = 100 + ((perimeter-0.25)/0.25)*400; }
+                        else if(perimeter < 0.75) { pos.x = 700 - ((perimeter-0.5)/0.25)*600; pos.y = 500; }
+                        else { pos.x = 100; pos.y = 500 - ((perimeter-0.75)/0.25)*400; }
+                        break;
+                    case 'pair_side':
+                        let pIdxS = Math.floor(index / 2);
+                        pos.x = 150 + pIdxS * 80 + (index % 2 * 25); pos.y = cy; break;
+                    case 'pair_front':
+                        let pIdxF = Math.floor(index / 2);
+                        pos.x = 150 + pIdxF * 80; pos.y = cy - 40 + (index % 2 * 60); break;
+                    case 'pair_face':
+                        let pIdxFace = Math.floor(index / 2);
+                        pos.x = 150 + pIdxFace * 80; pos.y = cy - 50 + (index % 2 * 100); break;
+                }
+            });
+            updateUI();
+        }
+
+        function applyGroupColor(start, end, color) {
+            if(userRole !== 'admin') return;
+            for(let i = start; i <= end; i++) { memberColors[i] = color; }
+            draw();
+        }
+
+        function applySingleName() {
+            if(userRole !== 'admin') return;
+            const idx = parseInt(document.getElementById('name-target-idx').value);
+            const name = document.getElementById('name-target-val').value;
+            if(idx >= 1 && idx <= 150) {
+                memberNames[idx] = name;
+                buildLoginDropdown();
+                draw();
+            }
+        }
+
+        // === 👥 出演者用: 周辺ディスタンス算出処理 ===
+        function calculateSurroundingMembers(positions) {
+            const myPos = positions.find(p => p.memberNumber === myMemberNumber);
+            if (!myPos) return;
+
+            const SCALE = 40; 
+            let relatives = [];
+
+            positions.forEach(p => {
+                if(p.memberNumber === myMemberNumber) return;
+                
+                let dx = p.x - myPos.x;
+                let dy = p.y - myPos.y;
+                if(isFlipped) { dx = -dx; dy = -dy; }
+
+                let dist = Math.sqrt(dx*dx + dy*dy) / SCALE;
+                let direction = "";
+                if (Math.abs(dx) > Math.abs(dy)) {
+                    direction = dx > 0 ? "右" : "左";
+                } else {
+                    direction = dy > 0 ? "奥 (後)" : "正面 (前)";
+                }
+                
+                relatives.push({
+                    num: p.memberNumber,
+                    name: memberNames[p.memberNumber] || '',
+                    dist: dist.toFixed(1),
+                    direction: direction,
+                    rawDist: dist
+                });
+            });
+
+            relatives.sort((a, b) => a.rawDist - b.rawDist);
+            const nearby = relatives.slice(0, 4); 
+
+            const listContainer = document.getElementById('surround-list');
+            if(nearby.length === 0) {
+                listContainer.innerText = "周囲に誰もいません";
+            } else {
+                listContainer.innerHTML = nearby.map(n => 
+                    `📍 <b>${n.num}番</b>${n.name ? `(${n.name})` : ''}<br>` +
+                    `➔ ${n.direction} ${n.dist}m<br>`
+                ).join('<div style="margin-bottom:6px; border-bottom:1px dashed var(--border-color);"></div>');
+            }
+        }
+
+        // === 🎨 キャンバス2D描画システム ===
+        function resizeCanvas() {
+            const container = canvas.parentElement;
+            const aspect = BASE_WIDTH / BASE_HEIGHT;
+            let w = container.clientWidth - 20;
+            let h = container.clientHeight - 20;
+            
+            if (w / h > aspect) { w = h * aspect; } else { h = w / aspect; }
+            canvas.style.width = w + 'px';
+            canvas.style.height = h + 'px';
+            canvas.width = BASE_WIDTH;
+            canvas.height = BASE_HEIGHT;
+            draw();
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.save();
+
+            if (backgroundImage) {
+                ctx.globalAlpha = 0.25;
+                ctx.drawImage(backgroundImage, 0, 0, canvas.width, canvas.height);
+                ctx.globalAlpha = 1.0;
+            }
+
+            ctx.strokeStyle = '#2d3748'; ctx.lineWidth = 1;
+            for(let x = 50; x < canvas.width; x += 50) {
+                ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke();
+            }
+            for(let y = 50; y < canvas.height; y += 50) {
+                ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke();
+            }
+
+            ctx.strokeStyle = '#4a5568'; ctx.lineWidth = 2;
+            ctx.beginPath(); ctx.moveTo(canvas.width/2, 0); ctx.lineTo(canvas.width/2, canvas.height); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(0, canvas.height/2); ctx.lineTo(canvas.width, canvas.height/2); ctx.stroke();
+            
+            ctx.fillStyle = '#718096'; ctx.font = 'bold 12px Arial'; ctx.textAlign = 'center';
+            if(!isFlipped) {
+                ctx.fillText('ーーー 客席正面 (FRONT) ーーー', canvas.width/2, canvas.height - 15);
+            } else {
+                ctx.fillText('ーーー ステージ奥 (BACK) ーーー', canvas.width/2, 25);
+            }
+
+            const currentForm = formations[currentFrameIndex];
+            if(!currentForm) { ctx.restore(); return; }
+
+            ctx.strokeStyle = 'rgba(234, 88, 12, 0.4)'; ctx.lineWidth = 3; ctx.setLineDash([4, 4]);
+            registeredPairs.forEach(pair => {
+                let p1 = currentForm.positions.find(p => p.memberNumber === pair[0]);
+                let p2 = currentForm.positions.find(p => p.memberNumber === pair[1]);
+                if(p1 && p2) {
+                    let pt1 = getCanvasCoords(p1.x, p1.y);
+                    let pt2 = getCanvasCoords(p2.x, p2.y);
+                    ctx.beginPath(); ctx.moveTo(pt1.x, pt1.y); ctx.lineTo(pt2.x, pt2.y); ctx.stroke();
+                }
+            });
+            ctx.setLineDash([]);
+
+            currentForm.positions.forEach(pos => {
+                let coords = getCanvasCoords(pos.x, pos.y);
+                let isMe = (userRole === 'performer' && pos.memberNumber === myMemberNumber);
+                let isSelected = selectedNumbers.includes(pos.memberNumber);
+
+                if (isMe) {
+                    ctx.fillStyle = 'rgba(234, 88, 12, 0.2)';
+                    ctx.beginPath(); ctx.arc(coords.x, coords.y, 22 + pulseRadius, 0, Math.PI*2); ctx.fill();
+                }
+
+                if (isSelected) {
+                    ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 3;
+                    ctx.beginPath(); ctx.arc(coords.x, coords.y, 16, 0, Math.PI*2); ctx.stroke();
+                }
+
+                ctx.fillStyle = isMe ? '#ea580c' : (memberColors[pos.memberNumber] || '#4b5563');
+                ctx.beginPath(); ctx.arc(coords.x, coords.y, 13, 0, Math.PI*2); ctx.fill();
+                
+                ctx.strokeStyle = isMe ? '#ffffff' : '#111827'; ctx.lineWidth = 2;
+                ctx.beginPath(); ctx.arc(coords.x, coords.y, 13, 0, Math.PI*2); ctx.stroke();
+
+                ctx.fillStyle = '#ffffff';
+                ctx.font = 'bold 10px Arial'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+                let displayStr = memberNames[pos.memberNumber] ? memberNames[pos.memberNumber].substring(0, 2) : pos.memberNumber;
+                ctx.fillText(displayStr, coords.x, coords.y);
+            });
+
+            if (isSelecting && currentTool === 'box') {
+                ctx.strokeStyle = 'rgba(37, 99, 235, 0.6)'; ctx.lineWidth = 2;
+                ctx.fillStyle = 'rgba(37, 99, 235, 0.1)';
+                let bx = selectStart.x; let by = selectStart.y;
+                let bw = selectEnd.x - selectStart.x; let bh = selectEnd.y - selectStart.y;
+                ctx.fillRect(bx, by, bw, bh);
+                ctx.strokeRect(bx, by, bw, bh);
+            }
+
+            ctx.restore();
+        }
+
+        function getCanvasCoords(logicX, logicY) {
+            if (isFlipped) { return { x: BASE_WIDTH - logicX, y: BASE_HEIGHT - logicY }; }
+            return { x: logicX, y: logicY };
+        }
+
+        function getLogicCoords(canvasX, canvasY) {
+            if (isFlipped) { return { x: BASE_WIDTH - canvasX, y: BASE_HEIGHT - canvasY }; }
+            return { x: canvasX, y: canvasY };
+        }
+
+        // === 🖱️ マウス・タッチイベント制御 ===
+        function getEventCanvasPos(e) {
+            const rect = canvas.getBoundingClientRect();
+            let clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            let clientY = e.touches ? e.touches[0].clientY : e.clientY;
+            return {
+                x: ((clientX - rect.left) / rect.width) * BASE_WIDTH,
+                y: ((clientY - rect.top) / rect.height) * BASE_HEIGHT
+            };
+        }
+
+        function handleStart(e) {
+            if(userRole !== 'admin') return;
+            const pos = getEventCanvasPos(e);
+            const logicPos = getLogicCoords(pos.x, pos.y);
+
+            const currentForm = formations[currentFrameIndex];
+            draggedNumber = null;
+            
+            for(let i = currentForm.positions.length - 1; i >= 0; i--) {
+                let p = currentForm.positions[i];
+                let dist = Math.sqrt((p.x - logicPos.x)**2 + (p.y - logicPos.y)**2);
+                if(dist <= 15) { draggedNumber = p.memberNumber; break; }
+            }
+
+            if (currentTool === 'select' && draggedNumber !== null) {
+                saveHistory(); // 🔴 ドラッグ移動の直前に状態を履歴保存
+                dragMode = 'move';
+                if (!selectedNumbers.includes(draggedNumber)) { selectedNumbers = [draggedNumber]; }
+                dragStartPositions = currentForm.positions.map(p => ({...p}));
+                selectStart = logicPos; 
+            } else {
+                dragMode = 'box';
+                isSelecting = true;
+                selectStart = pos;
+                selectEnd = pos;
+                selectedNumbers = [];
+            }
+            updateUI();
+        }
+
+        function handleMove(e) {
+            if(userRole !== 'admin' || !dragMode) return;
+            const pos = getEventCanvasPos(e);
+            const logicPos = getLogicCoords(pos.x, pos.y);
+            const currentForm = formations[currentFrameIndex];
+
+            if (dragMode === 'move' && draggedNumber !== null) {
+                let dx = logicPos.x - selectStart.x;
+                let dy = logicPos.y - selectStart.y;
+
+                selectedNumbers.forEach(num => {
+                    let startP = dragStartPositions.find(p => p.memberNumber === num);
+                    let currentP = currentForm.positions.find(p => p.memberNumber === num);
+                    if(startP && currentP) {
+                        currentP.x = Math.max(15, Math.min(BASE_WIDTH - 15, startP.x + dx));
+                        currentP.y = Math.max(15, Math.min(BASE_HEIGHT - 15, startP.y + dy));
+
+                        if (symmetryAssist && selectedNumbers.length === 1) {
+                            let symNum = totalCount - currentP.memberNumber + 1;
+                            let symP = currentForm.positions.find(p => p.memberNumber === symNum);
+                            if (symP && symNum !== currentP.memberNumber) {
+                                symP.x = BASE_WIDTH - currentP.x;
+                                symP.y = currentP.y;
+                            }
+                        }
+                    }
+                });
+            } else if (dragMode === 'box' && isSelecting) {
+                selectEnd = pos;
+                let x1 = Math.min(selectStart.x, selectEnd.x);
+                let x2 = Math.max(selectStart.x, selectEnd.x);
+                let y1 = Math.min(selectStart.y, selectEnd.y);
+                let y2 = Math.max(selectStart.y, selectEnd.y);
+
+                selectedNumbers = [];
+                currentForm.positions.forEach(p => {
+                    let coords = getCanvasCoords(p.x, p.y);
+                    if(coords.x >= x1 && coords.x <= x2 && coords.y >= y1 && coords.y <= y2) {
+                        selectedNumbers.push(p.memberNumber);
+                    }
+                });
+            }
+            updateUI();
+        }
+
+        function handleEnd() {
+            dragMode = null;
+            isSelecting = false;
+            draggedNumber = null;
+            draw();
+        }
+
+        canvas.addEventListener('mousedown', handleStart);
+        canvas.addEventListener('mousemove', handleMove);
+        window.addEventListener('mouseup', handleEnd);
+
+        canvas.addEventListener('touchstart', handleStart, {passive: true});
+        canvas.addEventListener('touchmove', handleMove, {passive: true});
+        window.addEventListener('touchend', handleEnd);
+
+        // === 🎵 音源＆アニメーション同期制御 ===
+        function loadAudioFile(input) {
+            const file = input.files[0];
+            if (!file) return;
+            const url = URL.createObjectURL(file);
+            audio.src = url;
+            audio.load();
+            isAudioLoaded = true;
+        }
+
+        audio.addEventListener('timeupdate', () => {
+            if (!audio.duration) return;
+            const progress = (audio.currentTime / audio.duration) * 100;
+            document.getElementById('seek-bar').value = progress;
+            
+            let matchIdx = 0;
+            for(let i = 0; i < formations.length; i++) {
+                if (audio.currentTime >= formations[i].time) { matchIdx = i; }
+            }
+            if(matchIdx !== currentFrameIndex) { selectFrame(matchIdx); }
+            updateTimeDisplay();
+        });
+
+        function updateTimeDisplay() {
+            let cur = isAudioLoaded ? audio.currentTime : formations[currentFrameIndex].time;
+            let dur = isAudioLoaded ? audio.duration : 0;
+            document.getElementById('time-display').innerText = `${formatTimeFull(cur)} / ${formatTimeFull(dur)}`;
+            document.getElementById('status-time').innerText = formatTimeFull(cur);
+            draw();
+        }
+
+        function togglePlay() {
+            if(!isAudioLoaded) return alert('先に音楽ファイルを読み込んでください');
+            if(audio.paused) {
+                audio.play();
+                document.getElementById('play-pause-btn').innerText = "⏸ 一時停止";
+                document.getElementById('play-pause-btn').className = "btn btn-danger";
+            } else {
+                audio.pause();
+                document.getElementById('play-pause-btn').innerText = "▶ 再生";
+                document.getElementById('play-pause-btn').className = "btn btn-primary";
+            }
+        }
+
+        function handleSeekBar(val) {
+            if(!isAudioLoaded) return;
+            audio.currentTime = (val / 100) * audio.duration;
+            updateTimeDisplay();
+        }
+
+        function changePlaybackSpeed(speed) {
+            currentPlaybackSpeed = speed;
+            audio.playbackRate = speed;
+            document.getElementById('speed-05').className = speed === 0.5 ? 'btn btn-primary' : 'btn';
+            document.getElementById('speed-10').className = speed === 1.0 ? 'btn btn-primary' : 'btn';
+        }
+
+        function formatTimeFull(sec) {
+            if (isNaN(sec) || sec === null) return "00:00.000";
+            let m = Math.floor(sec / 60).toString().padStart(2, '0');
+            let s = Math.floor(sec % 60).toString().padStart(2, '0');
+            let ms = Math.floor((sec % 1) * 1000).toString().padStart(3, '0');
+            return `${m}:${s}.${ms}`;
+        }
+
+        function toggleFullScreen() {
+            const body = document.body;
+            body.classList.toggle('fullscreen-mode');
+            resizeCanvas();
+        }
+
+        function animatePulse() {
+            pulseRadius = (pulseRadius + 0.25) % 8;
+            if(userRole === 'performer') draw();
+            requestAnimationFrame(animatePulse);
+        }
+
+        // === 🌐 GAS連携クラウド処理 ===
         async function loadFromCloud() {
             if (!CLOUD_DATABASE_URL || CLOUD_DATABASE_URL.includes("ここにデプロイ")) {
-                initInitialPositions(); buildLoginDropdown(); updateUI(); return;
+                initInitialPositions(); buildLoginDropdown(); renderPairListUI(); renderCustomTemplateListUI(); updateUI(); return;
             }
             try {
                 const res = await fetch(CLOUD_DATABASE_URL);
@@ -507,557 +1102,14 @@
                 });
                 alert("📡 保存・クラウド一斉配信が完了しました！");
             } catch (err) { alert("❌ 通信エラーが発生しました。"); }
-            finally { btn.innerText = "💾 クラウド配信保存"; draw(); }
+            finally { btn.innerText = "💾 クラウド配信保存"; updateUI(); }
         }
 
-        function buildLoginDropdown() {
-            const select = document.getElementById('login-number-select');
-            if(!select) return; select.innerHTML = '';
-            for(let i = 1; i <= totalCount; i++) {
-                const opt = document.createElement('option'); opt.value = i;
-                opt.innerText = memberNames[i] ? `${i}番 (${memberNames[i]})` : `${i}番`;
-                select.appendChild(opt);
-            }
-        }
-
-        function updateUI() {
-            const currentForm = formations[currentFrameIndex];
-            if(!currentForm) return;
-
-            document.getElementById('memo-header-title').innerText = `指示メモ (${currentForm.name})`;
-            document.getElementById('memo-body-text').innerText = currentForm.memo || '指示なし';
-
-            document.getElementById('status-frame').innerText = currentForm.name;
-            document.getElementById('status-time').innerText = formatTimeFull(currentForm.time);
-            document.getElementById('status-selected-info').innerText = (selectedNumbers.length > 0) ? `(選択:${selectedNumbers.length}人)` : '';
-
-            if(userRole === 'performer') calculateSurroundingMembers(currentForm.positions);
-
-            const container = document.getElementById('timeline-container');
-            container.innerHTML = '';
-            formations.forEach((form, idx) => {
-                const card = document.createElement('div');
-                card.className = idx === currentFrameIndex ? 'timeline-card active' : 'timeline-card';
-                
-                const preview = document.createElement('div');
-                preview.className = 'thumb-preview';
-                
-                const nameLabel = document.createElement('div');
-                nameLabel.className = 'card-name';
-                nameLabel.innerText = form.name;
-                
-                const timeLabel = document.createElement('div');
-                timeLabel.className = 'card-time';
-                timeLabel.innerText = formatTimeShort(form.time);
-                
-                card.appendChild(preview);
-                card.appendChild(nameLabel);
-                card.appendChild(timeLabel);
-                
-                card.onclick = () => {
-                    currentFrameIndex = idx;
-                    if(isAudioLoaded) {
-                        audio.currentTime = form.time;
-                    }
-                    updateUI();
-                };
-                container.appendChild(card);
-                drawThumb(preview, form.positions);
-            });
-            draw();
-        }
-
-        // === 各種時間フォーマット ===
-        function formatTimeFull(sec) {
-            const m = Math.floor(sec / 60).toString().padStart(2, '0');
-            const s = Math.floor(sec % 60).toString().padStart(2, '0');
-            const ms = Math.floor((sec % 1) * 1000).toString().padStart(3, '0');
-            return `${m}:${s}.${ms}`;
-        }
-        function formatTimeShort(sec) {
-            const m = Math.floor(sec / 60).toString().padStart(2, '0');
-            const s = Math.floor(sec % 60).toString().padStart(2, '0');
-            return `${m}:${s}`;
-        }
-
-        // === キャンバス周りのシステム機能 ===
-        function resizeCanvas() {
-            const rect = canvas.parentElement.getBoundingClientRect();
-            canvas.width = rect.width > 800 ? 800 : rect.width - 20;
-            canvas.height = canvas.width * 0.75;
-            draw();
-        }
-
-        // 出演者用：周辺メンバーの方向判定機能
-        function calculateSurroundingMembers(positions) {
-            const myPos = positions.find(p => p.memberNumber === myMemberNumber);
-            if(!myPos) return;
-            let list = [];
-            positions.forEach(p => {
-                if(p.memberNumber === myMemberNumber) return;
-                let dx = p.x - myPos.x;
-                let dy = p.y - myPos.y;
-                let dist = Math.sqrt(dx*dx + dy*dy);
-                if(dist < 75) {
-                    let angle = Math.atan2(dy, dx) * 180 / Math.PI;
-                    if(isFlipped) angle += 180;
-                    let dir = "右";
-                    if (angle > -45 && angle <= 45) dir = "右";
-                    else if (angle > 45 && angle <= 135) dir = "下(客席側)";
-                    else if (angle > -135 && angle <= -45) dir = "上(奥側)";
-                    else dir = "左";
-                    let name = memberNames[p.memberNumber] ? `(${memberNames[p.memberNumber]})` : "";
-                    list.push({dist, text: `${dir}に ${p.memberNumber}番${name}`});
-                }
-            });
-            list.sort((a,b)=>a.dist - b.dist);
-            const listContainer = document.getElementById('surround-list');
-            listContainer.innerHTML = list.length === 0 ? "近くに誰もいません" : list.slice(0, 5).map(l => l.text).join('<br>');
-        }
-
-        // === 描画ロジック ===
-        function screenToData(x, y) {
-            let cx = canvas.width / 2; let cy = canvas.height / 2;
-            let nx = (x - cx - offsetX) / zoom + 400;
-            let ny = (y - cy - offsetY) / zoom + 300;
-            if (isFlipped) { nx = 800 - nx; ny = 600 - ny; }
-            return { x: nx, y: ny };
-        }
-
-        function dataToScreen(x, y) {
-            let nx = x; let ny = y;
-            if(isFlipped) { nx = 800 - nx; ny = 600 - ny; }
-            let cx = canvas.width / 2; let cy = canvas.height / 2;
-            let sx = cx + offsetX + (nx - 400) * zoom;
-            let sy = cy + offsetY + (ny - 300) * zoom;
-            return { x: sx, y: sy };
-        }
-
-        function draw() {
-            ctx.clearRect(0,0,canvas.width,canvas.height);
-            ctx.fillStyle = '#1a1f2c'; ctx.fillRect(0,0,canvas.width,canvas.height);
-
-            // 下絵背景のレンダリング
-            if(backgroundImage) {
-                let p0 = dataToScreen(0,0); let p1 = dataToScreen(800,600);
-                ctx.drawImage(backgroundImage, p0.x, p0.y, p1.x - p0.x, p1.y - p0.y);
-            }
-
-            // 基準線（センター、グリッド）の描写
-            ctx.strokeStyle = 'rgba(255,255,255,0.15)'; ctx.lineWidth = 1;
-            let midX = dataToScreen(400, 0).x; let midY = dataToScreen(0, 300).y;
-            ctx.beginPath(); ctx.moveTo(midX, 0); ctx.lineTo(midX, canvas.height); ctx.stroke();
-            ctx.beginPath(); ctx.moveTo(0, midY); ctx.lineTo(canvas.width, midY); ctx.stroke();
-            
-            // 番号同士のペア線
-            ctx.strokeStyle = 'rgba(139, 92, 246, 0.6)'; ctx.lineWidth = 2; ctx.setLineDash([4, 4]);
-            const currentPositions = getCurrentInterpolatedPositions();
-            registeredPairs.forEach(pair => {
-                let p1 = currentPositions.find(p => p.memberNumber === pair[0]);
-                let p2 = currentPositions.find(p => p.memberNumber === pair[1]);
-                if(p1 && p2) {
-                    let s1 = dataToScreen(p1.x, p1.y); let s2 = dataToScreen(p2.x, p2.y);
-                    ctx.beginPath(); ctx.moveTo(s1.x, s1.y); ctx.lineTo(s2.x, s2.y); ctx.stroke();
-                }
-            });
-            ctx.setLineDash([]);
-
-            // メンバーの描画
-            currentPositions.forEach(p => {
-                let s = dataToScreen(p.x, p.y);
-                let isMe = (userRole === 'performer' && p.memberNumber === myMemberNumber);
-                let isSelected = selectedNumbers.includes(p.memberNumber);
-                
-                if(isMe) {
-                    ctx.fillStyle = 'rgba(234, 88, 12, 0.3)';
-                    ctx.beginPath(); ctx.arc(s.x, s.y, 22 + pulseRadius, 0, Math.PI*2); ctx.fill();
-                }
-
-                ctx.fillStyle = memberColors[p.memberNumber] || '#cbd5e1';
-                if(isSelected) ctx.fillStyle = '#2563eb';
-                if(isMe) ctx.fillStyle = '#ea580c';
-
-                ctx.beginPath(); ctx.arc(s.x, s.y, 14 * zoom, 0, Math.PI*2); ctx.fill();
-                ctx.strokeStyle = isSelected ? '#ffffff' : 'rgba(0,0,0,0.4)';
-                ctx.lineWidth = isSelected ? 3 : 1.5; ctx.stroke();
-
-                // 文字（番号 / 名前）
-                ctx.fillStyle = '#ffffff'; ctx.font = `bold ${11 * zoom}px sans-serif`;
-                ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-                let displayTxt = memberNames[p.memberNumber] ? memberNames[p.memberNumber].slice(0,2) : p.memberNumber;
-                ctx.fillText(displayTxt, s.x, s.y);
-            });
-
-            // 範囲選択ボックスのプレビュー
-            if(isSelecting && currentTool === 'box') {
-                ctx.strokeStyle = '#2563eb'; ctx.lineWidth = 1.5;
-                ctx.fillStyle = 'rgba(37, 99, 235, 0.15)';
-                let w = selectEnd.canvasX - selectStart.canvasX;
-                let h = selectEnd.canvasY - selectStart.canvasY;
-                ctx.fillRect(selectStart.canvasX, selectStart.canvasY, w, h);
-                ctx.strokeRect(selectStart.canvasX, selectStart.canvasY, w, h);
-            }
-        }
-
-        // タイムラインカードのミニサムネイル描画
-        function drawThumb(div, positions) {
-            let thCanvas = div.querySelector('canvas');
-            if(!thCanvas) {
-                thCanvas = document.createElement('canvas'); thCanvas.width = 95; thCanvas.height = 40;
-                div.appendChild(thCanvas);
-            }
-            let tctx = thCanvas.getContext('2d');
-            tctx.fillStyle = '#111827'; tctx.fillRect(0,0,95,40);
-            tctx.fillStyle = 'rgba(255,255,255,0.4)';
-            positions.forEach(p => {
-                let tx = (p.x / 800) * 95; let ty = (p.y / 600) * 40;
-                tctx.beginPath(); tctx.arc(tx, ty, 1.5, 0, Math.PI*2); tctx.fill();
-            });
-        }
-
-        // === アニメーション＆音源同期プレイヤー ===
-        function getCurrentInterpolatedPositions() {
-            if(!audio.currentTime || formations.length <= 1) return formations[currentFrameIndex].positions;
-            let t = audio.currentTime;
-            
-            let prev = formations[0]; let next = formations[0];
-            for(let i=0; i<formations.length; i++) {
-                if(formations[i].time <= t) prev = formations[i];
-            }
-            let idx = formations.indexOf(prev);
-            if(idx < formations.length - 1) { next = formations[idx+1]; } else { return prev.positions; }
-            
-            let duration = next.time - prev.time;
-            if(duration <= 0) return prev.positions;
-            let ratio = (t - prev.time) / duration;
-
-            // イージングを適応させて滑らかに移動
-            ratio = ratio < 0.5 ? 2 * ratio * ratio : 1 - Math.pow(-2 * ratio + 2, 2) / 2;
-
-            return prev.positions.map(p => {
-                let nPos = next.positions.find(np => np.memberNumber === p.memberNumber) || p;
-                return { memberNumber: p.memberNumber, x: p.x + (nPos.x - p.x) * ratio, y: p.y + (nPos.y - p.y) * ratio };
-            });
-        }
-
-        // === マウス・タッチ操作イベントのハンドリング ===
-        function handlePointerDown(e) {
-            let rect = canvas.getBoundingClientRect();
-            let canvasX = (e.clientX || e.touches[0].clientX) - rect.left;
-            let canvasY = (e.clientY || e.touches[0].clientY) - rect.top;
-            let dataPos = screenToData(canvasX, canvasY);
-
-            if(userRole !== 'admin') {
-                isPanning = true; startPanX = canvasX; startPanY = canvasY; return;
-            }
-
-            if(currentTool === 'box') {
-                isSelecting = true;
-                selectStart = {dataX: dataPos.x, dataY: dataPos.y, canvasX, canvasY};
-                selectEnd = {dataX: dataPos.x, dataY: dataPos.y, canvasX, canvasY};
-            } else {
-                // タップされた要素の判定
-                let clicked = null;
-                const currentPositions = formations[currentFrameIndex].positions;
-                for(let p of currentPositions) {
-                    let dx = p.x - dataPos.x; let dy = p.y - dataPos.y;
-                    if(Math.sqrt(dx*dx + dy*dy) < 16) { clicked = p.memberNumber; break; }
-                }
-
-                if(clicked) {
-                    draggedNumber = clicked; dragMode = 'member';
-                    if(!selectedNumbers.includes(clicked)) {
-                        if(!e.shiftKey) selectedNumbers = [];
-                        selectedNumbers.push(clicked);
-                    }
-                    dragStartPositions = selectedNumbers.map(num => {
-                        let p = currentPositions.find(pos => pos.memberNumber === num);
-                        return { number: num, x: p.x, y: p.y };
-                    });
-                    selectStart = {dataX: dataPos.x, dataY: dataPos.y, canvasX, canvasY};
-                } else {
-                    isPanning = true; startPanX = canvasX; startPanY = canvasY;
-                    if(!e.shiftKey) selectedNumbers = [];
-                }
-            }
-            updateUI();
-        }
-
-        function handlePointerMove(e) {
-            let rect = canvas.getBoundingClientRect();
-            let canvasX = (e.clientX || (e.touches && e.touches[0].clientX)) - rect.left;
-            let canvasY = (e.clientY || (e.touches && e.touches[0].clientY)) - rect.top;
-            if(!canvasX || !canvasY) return;
-            let dataPos = screenToData(canvasX, canvasY);
-
-            if(isPanning) {
-                offsetX += (canvasX - startPanX); offsetY += (canvasY - startPanY);
-                startPanX = canvasX; startPanY = canvasY; draw();
-            } else if(isSelecting) {
-                selectEnd = {dataX: dataPos.x, dataY: dataPos.y, canvasX, canvasY}; draw();
-            } else if(dragMode === 'member' && draggedNumber) {
-                let dx = dataPos.x - selectStart.dataX; let dy = dataPos.y - selectStart.dataY;
-                let currentPositions = formations[currentFrameIndex].positions;
-                
-                dragStartPositions.forEach(start => {
-                    let p = currentPositions.find(pos => pos.memberNumber === start.number);
-                    if(p) {
-                        p.x = start.x + dx; p.y = start.y + dy;
-                        // 左右対称アシスト機能
-                        if(symmetryAssist && selectedNumbers.length === 1) {
-                            applySymmetryCorrection(p);
-                        }
-                    }
-                });
-                draw();
-            }
-        }
-
-        function handlePointerUp() {
-            if(isSelecting) {
-                isSelecting = false;
-                let xMin = Math.min(selectStart.dataX, selectEnd.dataX);
-                let xMax = Math.max(selectStart.dataX, selectEnd.dataX);
-                let yMin = Math.min(selectStart.dataY, selectEnd.dataY);
-                let yMax = Math.max(selectStart.dataY, selectEnd.dataY);
-                
-                selectedNumbers = [];
-                formations[currentFrameIndex].positions.forEach(p => {
-                    if(p.x >= xMin && p.x <= xMax && p.y >= yMin && p.y <= yMax) selectedNumbers.push(p.memberNumber);
-                });
-                setTool('select');
-            }
-            isPanning = false; draggedNumber = null; dragMode = null;
-            updateUI();
-        }
-
-        function applySymmetryCorrection(p) {
-            let pair = registeredPairs.find(pr => pr.includes(p.memberNumber));
-            if(!pair) return;
-            let otherNum = pair[0] === p.memberNumber ? pair[1] : pair[0];
-            let otherPos = formations[currentFrameIndex].positions.find(pos => pos.memberNumber === otherNum);
-            if(otherPos) {
-                otherPos.x = 800 - p.x; otherPos.y = p.y;
-            }
-        }
-
-        // ホイールによる直感的なズームイン・アウト
-        canvas.addEventListener('wheel', (e) => {
-            e.preventDefault();
-            let zoomFactor = 1.1;
-            if(e.deltaY > 0) zoom /= zoomFactor; else zoom *= zoomFactor;
-            zoom = Math.min(Math.max(0.4, zoom), 4.0);
-            draw();
-        }, {passive:false});
-
-        canvas.addEventListener('mousedown', handlePointerDown);
-        window.addEventListener('mousemove', handlePointerMove);
-        window.addEventListener('mouseup', handlePointerUp);
-        canvas.addEventListener('touchstart', handlePointerDown);
-        window.addEventListener('touchmove', handlePointerMove, {passive:false});
-        window.addEventListener('touchend', handlePointerUp);
-
-        // === コマ（フレーム）編集ロジック ===
-        function addNewFrame() {
-            if(userRole !== 'admin') return;
-            let lastForm = formations[formations.length - 1];
-            let newTime = lastForm ? lastForm.time + 4.0 : 0.0;
-            let newId = 'f_' + Date.now();
-            let newPositions = lastForm ? lastForm.positions.map(p => ({...p})) : [];
-            formations.push({
-                id: newId, name: `コマ${formations.length + 1}`, memo: '新規の指示', time: newTime, positions: newPositions
-            });
-            formations.sort((a,b)=>a.time - b.time);
-            currentFrameIndex = formations.findIndex(f => f.id === newId);
-            updateUI();
-        }
-
-        function deleteCurrentFrame() {
-            if(userRole !== 'admin' || formations.length <= 1) return alert('これ以上削除できません');
-            if(!confirm('現在のコマを削除しますか？')) return;
-            formations.splice(currentFrameIndex, 1);
-            currentFrameIndex = Math.max(0, currentFrameIndex - 1);
-            updateUI();
-        }
-
-        function promptEditMemo() {
-            if(userRole !== 'admin') return;
-            let f = formations[currentFrameIndex];
-            let txt = prompt("このコマの指示指示メモを入力してください:", f.memo || "");
-            if(txt !== null) { f.memo = txt; updateUI(); }
-        }
-
-        // === 14種類のフォーメーションテンプレート幾何学計算 ===
-        function applyTemplate(type) {
-            if(userRole !== 'admin') return;
-            let currentPositions = formations[currentFrameIndex].positions;
-            let targets = selectedNumbers.length > 0 ? selectedNumbers : currentPositions.map(p => p.memberNumber);
-            targets.sort((a,b)=>a-b);
-
-            let count = targets.length;
-            let cx = 400; let cy = 300;
-
-            targets.forEach((num, i) => {
-                let p = currentPositions.find(pos => pos.memberNumber === num);
-                if(!p) return;
-                let angle = (i / count) * Math.PI * 2;
-                
-                switch(type) {
-                    case 'line':
-                        p.x = 100 + (i / (count - 1 || 1)) * 600; p.y = 300; break;
-                    case 'vertLine':
-                        p.x = 400; p.y = 100 + (i / (count - 1 || 1)) * 400; break;
-                    case 'circle_2':
-                        let r = (i < count/2) ? 120 : 200;
-                        let a = (i % Math.ceil(count/2)) / Math.ceil(count/2) * Math.PI * 2;
-                        p.x = cx + Math.cos(a) * r; p.y = cy + Math.sin(a) * r; break;
-                    case 'circle_3':
-                        let layer = i % 3; let r3 = 90 + layer * 60;
-                        p.x = cx + Math.cos(angle) * r3; p.y = cy + Math.sin(angle) * r3; break;
-                    case 'square_2':
-                        let l = i % 2; let sz = 120 + l * 100;
-                        let sa = (Math.floor(i/2) / Math.ceil(count/2)) * Math.PI * 2;
-                        p.x = cx + Math.max(-1, Math.min(1, Math.cos(sa) * 1.5)) * sz;
-                        p.y = cy + Math.max(-1, Math.min(1, Math.sin(sa) * 1.5)) * sz; break;
-                    case 'radial':
-                        let lines = 6; let lIdx = i % lines; let rDist = 50 + Math.floor(i/lines)*45;
-                        let la = (lIdx / lines) * Math.PI * 2;
-                        p.x = cx + Math.cos(la) * rDist; p.y = cy + Math.sin(la) * rDist; break;
-                    case 'triangles':
-                        let tri = i % 3; let radT = 60 + Math.floor(i/3)*60;
-                        let ta = (tri / 3) * Math.PI * 2 + (Math.floor(i/3) * 0.2);
-                        p.x = cx + Math.cos(ta) * radT; p.y = cy + Math.sin(ta) * radT; break;
-                    case 'diamond':
-                        let da = (i / count) * Math.PI * 2;
-                        p.x = cx + Math.cos(da) * 220; p.y = cy + Math.sin(da) * 150; break;
-                    case 'cross_x':
-                        let d = (i - count/2) / (count/2) * 200;
-                        if(i % 2 === 0) { p.x = cx + d; p.y = cy + d; } else { p.x = cx + d; p.y = cy - d; } break;
-                    case 'chidori_5':
-                        let col = i % 5; let row = Math.floor(i/5);
-                        p.x = 160 + col * 120 + (row % 2 * 60); p.y = 120 + row * 65; break;
-                    case 'outer_box':
-                        let edge = i % 4; let progress = Math.floor(i/4) / (count/4 || 1);
-                        if(edge===0){ p.x = 150 + progress*500; p.y = 100; }
-                        else if(edge===1){ p.x = 650; p.y = 100 + progress*400; }
-                        else if(edge===2){ p.x = 650 - progress*500; p.y = 500; }
-                        else { p.x = 150; p.y = 500 - progress*400; } break;
-                    
-                    // ペア関連のテンプレート配置
-                    case 'pair_side':
-                        let pIdx = Math.floor(i / 2);
-                        let isRight = i % 2;
-                        p.x = 150 + (pIdx / (Math.ceil(count/2) - 1 || 1)) * 500 + (isRight * 35);
-                        p.y = 200 + (pIdx % 3) * 80; break;
-                    case 'pair_front':
-                        let pfIdx = Math.floor(i / 2);
-                        let isBehind = i % 2;
-                        p.x = 150 + (pfIdx / (Math.ceil(count/2) - 1 || 1)) * 500;
-                        p.y = 200 + (pfIdx % 3) * 80 + (isBehind * 40); break;
-                    case 'pair_face':
-                        let pfaIdx = Math.floor(i / 2);
-                        let isTop = i % 2;
-                        p.x = 150 + (pfaIdx / (Math.ceil(count/2) - 1 || 1)) * 500;
-                        p.y = 260 + (isTop * 60); break;
-                }
-            });
-            draw();
-        }
-
-        // === 属性管理ツール (一括色分け・単体名前) ===
-        function applyGroupColor(start, end, color) {
-            if(userRole !== 'admin') return;
-            for(let i = start; i <= end; i++) { memberColors[i] = color; }
-            draw();
-        }
-
-        function applySingleName() {
-            if(userRole !== 'admin') return;
-            let idx = parseInt(document.getElementById('name-target-idx').value);
-            let val = document.getElementById('name-target-val').value;
-            if(idx >= 1 && idx <= 150) {
-                memberNames[idx] = val; buildLoginDropdown(); draw();
-            }
-        }
-
-        // === プレイヤー用 オーディオ操作ロジック ===
-        function loadAudioFile(input) {
-            const file = input.files[0];
-            if(!file) return;
-            audio.src = URL.createObjectURL(file);
-            isAudioLoaded = true;
-            audio.load();
-        }
-
-        function togglePlay() {
-            if(!isAudioLoaded) return alert('先に音楽ファイルをロードしてください');
-            if(audio.paused) {
-                audio.playbackRate = currentPlaybackSpeed; audio.play();
-                document.getElementById('play-pause-btn').innerText = "⏸ 一時停止";
-            } else {
-                audio.pause(); document.getElementById('play-pause-btn').innerText = "▶ 再生";
-            }
-        }
-
-        function changePlaybackSpeed(speed) {
-            currentPlaybackSpeed = speed;
-            audio.playbackRate = speed;
-            document.getElementById('speed-05').className = speed === 0.5 ? 'btn btn-primary' : 'btn';
-            document.getElementById('speed-10').className = speed === 1.0 ? 'btn btn-primary' : 'btn';
-        }
-
-        function handleSeekBar(val) {
-            if(!isAudioLoaded || !audio.duration) return;
-            audio.currentTime = (val / 100) * audio.duration;
-        }
-
-        function markCurrentTime() {
-            if(userRole !== 'admin') return;
-            formations[currentFrameIndex].time = audio.currentTime || 0.0;
-            formations.sort((a,b)=>a.time - b.time);
-            updateUI();
-        }
-
-        // オーディオのタイムアップデートに基づく同期機構
-        audio.addEventListener('timeupdate', () => {
-            if(!audio.duration) return;
-            let prog = (audio.currentTime / audio.duration) * 100;
-            document.getElementById('seek-bar').value = prog;
-            document.getElementById('time-display').innerText = `${formatTimeFull(audio.currentTime)} / ${formatTimeFull(audio.duration)}`;
-            
-            // 現在時刻に合わせてアクティブなコマを追従
-            if(audio.currentTime > 0) {
-                let activeIdx = 0;
-                for(let i=0; i<formations.length; i++) {
-                    if(formations[i].time <= audio.currentTime) activeIdx = i;
-                }
-                if(activeIdx !== currentFrameIndex) {
-                    currentFrameIndex = activeIdx;
-                    document.getElementById('status-frame').innerText = formations[currentFrameIndex].name;
-                    document.getElementById('memo-body-text').innerText = formations[currentFrameIndex].memo || '指示なし';
-                }
-            }
-            draw();
-        });
-
-        // アニメーションループ (パルス描写用)
-        function animationLoop() {
-            pulseRadius += 0.2; if(pulseRadius > 10) pulseRadius = 0;
-            if(userRole === 'performer') draw();
-            requestAnimationFrame(animationLoop);
-        }
-
-        function toggleFullScreen() {
-            document.body.classList.toggle('fullscreen-mode');
-            resizeCanvas();
-        }
-
-        // アプリ起動時のイニシャライズ
         window.addEventListener('resize', resizeCanvas);
-        window.onload = () => {
+        window.addEventListener('load', () => {
             loadFromCloud();
-            requestAnimationFrame(animationLoop);
-        };
+            animatePulse();
+        });
     </script>
 </body>
 </html>
