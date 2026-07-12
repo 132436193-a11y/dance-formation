@@ -36,14 +36,12 @@
         canvas { background-color: #1a1f2c; border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); max-width: 100%; max-height: 100%; aspect-ratio: 4/3; cursor: grab; touch-action: none; }
         canvas:active { cursor: grabbing; }
 
-        /* オーバーレイ表示 */
         .memo-overlay { position: absolute; top: 10px; right: 10px; width: 180px; background: rgba(0, 0, 0, 0.8); backdrop-filter: blur(4px); border: 1px solid #444; border-radius: 8px; padding: 10px; color: white; z-index: 5; }
         body.perf-theme .memo-overlay { background: rgba(255, 255, 255, 0.95); border: 1px solid #cbd5e1; color: #1e293b; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
         .memo-title { font-size: 10px; font-weight: bold; color: var(--text-sub); margin-bottom: 2px; }
         .memo-body { font-size: 12px; font-weight: bold; color: #f59e0b; min-height: 25px; white-space: pre-wrap; }
         body.perf-theme .memo-body { color: #dc2626; }
 
-        /* 周辺メンバー表示パネル */
         .surround-overlay { position: absolute; top: 10px; left: 10px; width: 180px; background: rgba(0,0,0,0.8); border: 1px solid #444; border-radius: 8px; padding: 10px; color: white; z-index: 5; font-size: 11px; display: none; }
         body.perf-theme .surround-overlay { display: block; background: rgba(255,255,255,0.95); border: 1px solid #cbd5e1; color: #1e293b; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
 
@@ -65,7 +63,6 @@
         .status-bar { background-color: var(--bg-tertiary); border-top: 1px solid var(--border-color); padding: 4px 12px; display: flex; justify-content: space-between; align-items: center; font-size: 11px; color: var(--text-sub); font-weight: bold; flex-shrink: 0; }
         .status-highlight { color: var(--accent-color); }
 
-        /* ログイン画面 */
         .login-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background-color: #0f172a; display: flex; justify-content: center; align-items: center; z-index: 999; padding: 15px; }
         .login-card { background-color: white; padding: 24px; border-radius: 12px; width: 100%; max-width: 360px; box-shadow: 0 10px 25px rgba(0,0,0,0.3); text-align: center; }
         .login-card h2 { color: #1e293b; margin-bottom: 16px; font-size: 22px; font-weight: bold; }
@@ -86,7 +83,6 @@
         .pair-item { display: flex; justify-content: space-between; align-items: center; background: var(--bg-tertiary); padding: 4px 8px; border-radius: 4px; font-size: 11px; border: 1px solid var(--border-color); }
         .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
 
-        /* === 📱 スマホ専用レスポンシブ崩れ対策 === */
         @media (max-width: 768px) {
             .main-container { flex-direction: column; }
             .sidebar { width: 100%; height: 160px; border-right: none; border-bottom: 1px solid var(--border-color); padding: 8px; gap: 10px; }
@@ -97,6 +93,40 @@
             .memo-body { font-size: 11px; min-height: 15px; }
         }
     </style>
+
+    <!-- Firebase v10 SDK のインポート -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getDatabase, ref, set, onValue } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+
+        // あなたのFirebaseプロジェクト設定を適用しました
+        const firebaseConfig = {
+            apiKey: "AIzaSyA7rsTAtCfK2NTT9R9u1_Pj_hZB27GHM2I",
+            authDomain: "dance-75ffe.firebaseapp.com",
+            databaseURL: "https://dance-75ffe-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "dance-75ffe",
+            storageBucket: "dance-75ffe.firebasestorage.app",
+            messagingSenderId: "841117098475",
+            appId: "1:841117098475:web:7836173ae049810b15f9ae",
+            measurementId: "G-T70GFX9R68"
+        };
+
+        // Firebase初期化
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+        const formationRef = ref(db, "danceFormationData");
+
+        // グローバルにFirebase関数を紐付け
+        window.saveToFirebase = function(data) {
+            return set(formationRef, data);
+        };
+
+        window.listenToFirebase = function(callback) {
+            onValue(formationRef, (snapshot) => {
+                callback(snapshot.val());
+            });
+        };
+    </script>
 </head>
 <body class="admin-theme">
 
@@ -288,8 +318,6 @@
         let symmetryAssist = false; 
         let backgroundImage = null;
 
-        const CLOUD_DATABASE_URL = "ここにデプロイしたURLを貼り付けます";
-
         let totalCount = 70;
         let memberColors = {};
         let memberNames = {};
@@ -324,7 +352,6 @@
         let isSelecting = false;
         let pulseRadius = 0;
 
-        // === 👥 初期位置生成システム（完全に人が出るように修正） ===
         function initInitialPositions() {
             formations[currentFrameIndex].positions = [];
             for(let i = 0; i < totalCount; i++) {
@@ -332,7 +359,6 @@
                 let y = 100 + Math.floor(i / 12) * 55;
                 formations[currentFrameIndex].positions.push({ memberNumber: i + 1, x, y });
             }
-            // 初期カラー割り当て
             for(let i = 1; i <= totalCount; i++) {
                 if(!memberColors[i]) {
                     if(i <= 10) memberColors[i] = '#3b82f6';
@@ -347,7 +373,6 @@
             }
         }
 
-        // UIから総人数を変更する処理
         function changeTotalCountFromUI() {
             if(userRole !== 'admin') return;
             const newCount = parseInt(document.getElementById('global-total-count').value);
@@ -1084,48 +1109,68 @@
             requestAnimationFrame(animatePulse);
         }
 
-        async function loadFromCloud() {
-            if (!CLOUD_DATABASE_URL || CLOUD_DATABASE_URL.includes("ここにデプロイ")) {
-                initInitialPositions(); buildLoginDropdown(); renderPairListUI(); renderCustomTemplateListUI(); updateUI(); return;
+        // === 📡 Firebase 連動コアシステム ===
+        function initCloudSync() {
+            if (typeof window.listenToFirebase !== "function") {
+                console.warn("Firebase script is loading...");
+                setTimeout(initCloudSync, 500);
+                return;
             }
-            try {
-                const res = await fetch(CLOUD_DATABASE_URL);
-                const data = await res.json();
-                if (data && data.status !== "empty" && data.formations) {
+
+            // クラウド上のデータ変更をリアルタイム監視
+            window.listenToFirebase((data) => {
+                if (data && data.formations) {
+                    if (userRole === 'admin' && dragMode) return;
+
                     totalCount = data.totalCount || 70;
                     document.getElementById('global-total-count').value = totalCount;
                     memberColors = data.memberColors || {};
                     memberNames = data.memberNames || {};
                     formations = data.formations;
-                    if(data.registeredPairs) registeredPairs = data.registeredPairs;
-                    if(data.customTemplates) customTemplates = data.customTemplates;
-                } else { initInitialPositions(); }
-            } catch (err) { initInitialPositions(); }
-            buildLoginDropdown(); renderPairListUI(); renderCustomTemplateListUI(); updateUI();
+                    registeredPairs = data.registeredPairs || [];
+                    customTemplates = data.customTemplates || [];
+                    
+                    if (currentFrameIndex >= formations.length) {
+                        currentFrameIndex = formations.length - 1;
+                    }
+                } else {
+                    if (userRole === 'admin') {
+                        initInitialPositions();
+                    }
+                }
+                buildLoginDropdown();
+                renderPairListUI();
+                renderCustomTemplateListUI();
+                updateUI();
+            });
         }
 
         async function syncToCloud() {
             if (userRole !== 'admin') return;
-            if (!CLOUD_DATABASE_URL || CLOUD_DATABASE_URL.includes("ここにデプロイ")) {
-                alert("❌ エラー: GASのURLが設定されていません。"); return;
+            if (typeof window.saveToFirebase !== "function") {
+                alert("❌ Firebaseが正しく初期化されていません。Configを確認してください。");
+                return;
             }
             const btn = document.getElementById('cloud-sync-btn');
             btn.innerText = "⏳ 保存中...";
+            
             const dataToSave = { totalCount, memberColors, memberNames, formations, registeredPairs, customTemplates };
+            
             try {
-                await fetch(CLOUD_DATABASE_URL, {
-                    method: 'POST', mode: 'no-cors',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(dataToSave)
-                });
-                alert("📡 保存・クラウド一斉配信が完了しました！");
-            } catch (err) { alert("❌ 通信エラーが発生しました。"); }
-            finally { btn.innerText = "💾 クラウド配信保存"; updateUI(); }
+                await window.saveToFirebase(dataToSave);
+                alert("📡 Firebaseへの保存・一斉配信が完了しました！");
+            } catch (err) {
+                console.error(err);
+                alert("❌ 保存に失敗しました。ルールの設定を確認してください。");
+            } finally {
+                btn.innerText = "💾 クラウド配信保存";
+                updateUI();
+            }
         }
 
         window.addEventListener('resize', resizeCanvas);
         window.addEventListener('load', () => {
-            loadFromCloud();
+            initCloudSync();
             animatePulse();
         });
     </script>
