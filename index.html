@@ -85,7 +85,7 @@
         .pair-item { display: flex; justify-content: space-between; align-items: center; background: var(--bg-tertiary); padding: 4px 8px; border-radius: 4px; font-size: 11px; border: 1px solid var(--border-color); }
         .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
 
-        /* === 📱 スマホ専用レスポンシブ崩れ対策 === */
+        /* === スマホ専用レスポンシブ崩れ対策 === */
         @media (max-width: 768px) {
             .main-container { flex-direction: column; }
             .sidebar { width: 100%; height: 160px; border-right: none; border-bottom: 1px solid var(--border-color); padding: 8px; gap: 10px; }
@@ -273,11 +273,7 @@
         let isFlipped = false; 
         let symmetryAssist = false; 
 
-        // ==========================================
-        // 🌐 【重要】ここに取得した「ウェブアプリのURL」を貼り付けてください
-        // ==========================================
         const CLOUD_DATABASE_URL = "ここにデプロイしたURLを貼り付けます";
-        // ==========================================
 
         let totalCount = 70;
         let memberColors = {};
@@ -296,14 +292,11 @@
         const audio = document.getElementById('main-audio');
         let isAudioLoaded = false;
 
-        // カメラパラメータ
         let zoom = 1.0; let offsetX = 0; let offsetY = 0;
         let isPanning = false; let startPanX = 0, startPanY = 0;
 
-        // 下絵画像用オブジェクト
         let backgroundImage = null;
 
-        // 範囲選択・ドラッグ用変数
         let isSelecting = false;
         let selectStart = {dataX:0, dataY:0, canvasX:0, canvasY:0};
         let selectEnd = {dataX:0, dataY:0, canvasX:0, canvasY:0};
@@ -354,7 +347,6 @@
             } else { alert('パスワードが違います'); }
         }
 
-        // ログアウト時にパスワード入力を必須にするため完全に初期化
         function logout() { 
             audio.pause(); 
             document.getElementById('admin-password').value = ''; 
@@ -471,6 +463,11 @@
                 const item = document.createElement('div');
                 item.className = 'pair-item';
                 item.innerHTML = `<span>👫 ${pair[0]}番 × ${pair[1]}番</span><span style="color:#ef4444; cursor:pointer;" onclick="removePair(${idx})">×</span>`;
+                item.onclick = (e) => {
+                    if(e.target.innerText === '×') return;
+                    selectedNumbers = [pair[0], pair[1]];
+                    updateUI();
+                };
                 container.appendChild(item);
             });
         }
@@ -540,454 +537,527 @@
             container.innerHTML = '';
             formations.forEach((form, idx) => {
                 const card = document.createElement('div');
-                card.className = `timeline-card ${idx === currentFrameIndex ? 'active' : ''}`;
+                card.className = idx === currentFrameIndex ? 'timeline-card active' : 'timeline-card';
+                
+                const preview = document.createElement('div');
+                preview.className = 'thumb-preview';
+                
+                const nameLabel = document.createElement('div');
+                nameLabel.className = 'card-name';
+                nameLabel.innerText = form.name;
+                
+                const timeLabel = document.createElement('div');
+                timeLabel.className = 'card-time';
+                timeLabel.innerText = formatTimeShort(form.time);
+                
+                card.appendChild(preview);
+                card.appendChild(nameLabel);
+                card.appendChild(timeLabel);
+                
                 card.onclick = () => {
                     currentFrameIndex = idx;
-                    if(isAudioLoaded) audio.currentTime = form.time;
-                    selectedNumbers = [];
+                    if(isAudioLoaded) {
+                        audio.currentTime = form.time;
+                    }
                     updateUI();
                 };
-
-                const thumb = document.createElement('div'); thumb.className = 'thumb-preview';
-                form.positions.slice(0, 15).forEach(p => {
-                    const d = document.createElement('div');
-                    d.style.position = 'absolute'; d.style.width = '2px'; d.style.height = '2px';
-                    d.style.borderRadius = '50%'; d.style.left = `${(p.x/1000)*100}%`; d.style.top = `${(p.y/1000)*100}%`;
-                    d.style.background = memberColors[p.memberNumber] || '#3b82f6';
-                    thumb.appendChild(d);
-                });
-
-                const timeStr = document.createElement('div'); timeStr.className = 'card-time'; timeStr.innerText = formatTimeFull(form.time);
-                const nameStr = document.createElement('div'); nameStr.className = 'card-name'; nameStr.innerText = form.name;
-
-                card.appendChild(thumb); card.appendChild(timeStr); card.appendChild(nameStr);
                 container.appendChild(card);
+                drawThumb(preview, form.positions);
             });
             draw();
         }
 
-        function calculateSurroundingMembers(positions) {
-            const myPos = positions.find(p => p.memberNumber === myMemberNumber);
-            const listDiv = document.getElementById('surround-list');
-            if(!myPos || !listDiv) return;
-
-            let nearest = positions
-                .filter(p => p.memberNumber !== myMemberNumber)
-                .map(p => {
-                    let dx = p.x - myPos.x; let dy = p.y - myPos.y;
-                    return { p, dx, dy, dist: Math.sqrt(dx*dx + dy*dy) };
-                })
-                .sort((a,b) => a.dist - b.dist).slice(0, 4);
-
-            if(nearest.length === 0) { listDiv.innerHTML = "なし"; return; }
-            let html = "";
-            nearest.forEach(n => {
-                let dir = "付近";
-                if(Math.abs(n.dx) > Math.abs(n.dy)) { dir = n.dx > 0 ? "👉 右側" : "👈 左側"; }
-                else { dir = n.dy > 0 ? "👇 後方" : "☝ 前方"; }
-                let name = memberNames[n.p.memberNumber] ? `(${memberNames[n.p.memberNumber]})` : "";
-                html += `<div>${dir}: <strong style="color:#ea580c;">${n.p.memberNumber}番</strong>${name}</div>`;
-            });
-            listDiv.innerHTML = html;
+        // === 各種時間フォーマット ===
+        function formatTimeFull(sec) {
+            const m = Math.floor(sec / 60).toString().padStart(2, '0');
+            const s = Math.floor(sec % 60).toString().padStart(2, '0');
+            const ms = Math.floor((sec % 1) * 1000).toString().padStart(3, '0');
+            return `${m}:${s}.${ms}`;
+        }
+        function formatTimeShort(sec) {
+            const m = Math.floor(sec / 60).toString().padStart(2, '0');
+            const s = Math.floor(sec % 60).toString().padStart(2, '0');
+            return `${m}:${s}`;
         }
 
-        function addNewFrame() {
-            const currentForm = formations[currentFrameIndex];
-            const nextTime = currentForm.time + 5.0;
-            formations.push({
-                id: 'f_' + Date.now(), name: `コマ${formations.length + 1}`, memo: '', time: nextTime,
-                positions: currentForm.positions.map(p => ({...p}))
+        // === キャンバス周りのシステム機能 ===
+        function resizeCanvas() {
+            const rect = canvas.parentElement.getBoundingClientRect();
+            canvas.width = rect.width > 800 ? 800 : rect.width - 20;
+            canvas.height = canvas.width * 0.75;
+            draw();
+        }
+
+        // 出演者用：周辺メンバーの方向判定機能
+        function calculateSurroundingMembers(positions) {
+            const myPos = positions.find(p => p.memberNumber === myMemberNumber);
+            if(!myPos) return;
+            let list = [];
+            positions.forEach(p => {
+                if(p.memberNumber === myMemberNumber) return;
+                let dx = p.x - myPos.x;
+                let dy = p.y - myPos.y;
+                let dist = Math.sqrt(dx*dx + dy*dy);
+                if(dist < 75) {
+                    let angle = Math.atan2(dy, dx) * 180 / Math.PI;
+                    if(isFlipped) angle += 180;
+                    let dir = "右";
+                    if (angle > -45 && angle <= 45) dir = "右";
+                    else if (angle > 45 && angle <= 135) dir = "下(客席側)";
+                    else if (angle > -135 && angle <= -45) dir = "上(奥側)";
+                    else dir = "左";
+                    let name = memberNames[p.memberNumber] ? `(${memberNames[p.memberNumber]})` : "";
+                    list.push({dist, text: `${dir}に ${p.memberNumber}番${name}`});
+                }
             });
-            formations.sort((a, b) => a.time - b.time);
-            currentFrameIndex = formations.findIndex(f => f.time === nextTime);
+            list.sort((a,b)=>a.dist - b.dist);
+            const listContainer = document.getElementById('surround-list');
+            listContainer.innerHTML = list.length === 0 ? "近くに誰もいません" : list.slice(0, 5).map(l => l.text).join('<br>');
+        }
+
+        // === 描画ロジック ===
+        function screenToData(x, y) {
+            let cx = canvas.width / 2; let cy = canvas.height / 2;
+            let nx = (x - cx - offsetX) / zoom + 400;
+            let ny = (y - cy - offsetY) / zoom + 300;
+            if (isFlipped) { nx = 800 - nx; ny = 600 - ny; }
+            return { x: nx, y: ny };
+        }
+
+        function dataToScreen(x, y) {
+            let nx = x; let ny = y;
+            if(isFlipped) { nx = 800 - nx; ny = 600 - ny; }
+            let cx = canvas.width / 2; let cy = canvas.height / 2;
+            let sx = cx + offsetX + (nx - 400) * zoom;
+            let sy = cy + offsetY + (ny - 300) * zoom;
+            return { x: sx, y: sy };
+        }
+
+        function draw() {
+            ctx.clearRect(0,0,canvas.width,canvas.height);
+            ctx.fillStyle = '#1a1f2c'; ctx.fillRect(0,0,canvas.width,canvas.height);
+
+            // 下絵背景のレンダリング
+            if(backgroundImage) {
+                let p0 = dataToScreen(0,0); let p1 = dataToScreen(800,600);
+                ctx.drawImage(backgroundImage, p0.x, p0.y, p1.x - p0.x, p1.y - p0.y);
+            }
+
+            // 基準線（センター、グリッド）の描写
+            ctx.strokeStyle = 'rgba(255,255,255,0.15)'; ctx.lineWidth = 1;
+            let midX = dataToScreen(400, 0).x; let midY = dataToScreen(0, 300).y;
+            ctx.beginPath(); ctx.moveTo(midX, 0); ctx.lineTo(midX, canvas.height); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(0, midY); ctx.lineTo(canvas.width, midY); ctx.stroke();
+            
+            // 番号同士のペア線
+            ctx.strokeStyle = 'rgba(139, 92, 246, 0.6)'; ctx.lineWidth = 2; ctx.setLineDash([4, 4]);
+            const currentPositions = getCurrentInterpolatedPositions();
+            registeredPairs.forEach(pair => {
+                let p1 = currentPositions.find(p => p.memberNumber === pair[0]);
+                let p2 = currentPositions.find(p => p.memberNumber === pair[1]);
+                if(p1 && p2) {
+                    let s1 = dataToScreen(p1.x, p1.y); let s2 = dataToScreen(p2.x, p2.y);
+                    ctx.beginPath(); ctx.moveTo(s1.x, s1.y); ctx.lineTo(s2.x, s2.y); ctx.stroke();
+                }
+            });
+            ctx.setLineDash([]);
+
+            // メンバーの描画
+            currentPositions.forEach(p => {
+                let s = dataToScreen(p.x, p.y);
+                let isMe = (userRole === 'performer' && p.memberNumber === myMemberNumber);
+                let isSelected = selectedNumbers.includes(p.memberNumber);
+                
+                if(isMe) {
+                    ctx.fillStyle = 'rgba(234, 88, 12, 0.3)';
+                    ctx.beginPath(); ctx.arc(s.x, s.y, 22 + pulseRadius, 0, Math.PI*2); ctx.fill();
+                }
+
+                ctx.fillStyle = memberColors[p.memberNumber] || '#cbd5e1';
+                if(isSelected) ctx.fillStyle = '#2563eb';
+                if(isMe) ctx.fillStyle = '#ea580c';
+
+                ctx.beginPath(); ctx.arc(s.x, s.y, 14 * zoom, 0, Math.PI*2); ctx.fill();
+                ctx.strokeStyle = isSelected ? '#ffffff' : 'rgba(0,0,0,0.4)';
+                ctx.lineWidth = isSelected ? 3 : 1.5; ctx.stroke();
+
+                // 文字（番号 / 名前）
+                ctx.fillStyle = '#ffffff'; ctx.font = `bold ${11 * zoom}px sans-serif`;
+                ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+                let displayTxt = memberNames[p.memberNumber] ? memberNames[p.memberNumber].slice(0,2) : p.memberNumber;
+                ctx.fillText(displayTxt, s.x, s.y);
+            });
+
+            // 範囲選択ボックスのプレビュー
+            if(isSelecting && currentTool === 'box') {
+                ctx.strokeStyle = '#2563eb'; ctx.lineWidth = 1.5;
+                ctx.fillStyle = 'rgba(37, 99, 235, 0.15)';
+                let w = selectEnd.canvasX - selectStart.canvasX;
+                let h = selectEnd.canvasY - selectStart.canvasY;
+                ctx.fillRect(selectStart.canvasX, selectStart.canvasY, w, h);
+                ctx.strokeRect(selectStart.canvasX, selectStart.canvasY, w, h);
+            }
+        }
+
+        // タイムラインカードのミニサムネイル描画
+        function drawThumb(div, positions) {
+            let thCanvas = div.querySelector('canvas');
+            if(!thCanvas) {
+                thCanvas = document.createElement('canvas'); thCanvas.width = 95; thCanvas.height = 40;
+                div.appendChild(thCanvas);
+            }
+            let tctx = thCanvas.getContext('2d');
+            tctx.fillStyle = '#111827'; tctx.fillRect(0,0,95,40);
+            tctx.fillStyle = 'rgba(255,255,255,0.4)';
+            positions.forEach(p => {
+                let tx = (p.x / 800) * 95; let ty = (p.y / 600) * 40;
+                tctx.beginPath(); tctx.arc(tx, ty, 1.5, 0, Math.PI*2); tctx.fill();
+            });
+        }
+
+        // === アニメーション＆音源同期プレイヤー ===
+        function getCurrentInterpolatedPositions() {
+            if(!audio.currentTime || formations.length <= 1) return formations[currentFrameIndex].positions;
+            let t = audio.currentTime;
+            
+            let prev = formations[0]; let next = formations[0];
+            for(let i=0; i<formations.length; i++) {
+                if(formations[i].time <= t) prev = formations[i];
+            }
+            let idx = formations.indexOf(prev);
+            if(idx < formations.length - 1) { next = formations[idx+1]; } else { return prev.positions; }
+            
+            let duration = next.time - prev.time;
+            if(duration <= 0) return prev.positions;
+            let ratio = (t - prev.time) / duration;
+
+            // イージングを適応させて滑らかに移動
+            ratio = ratio < 0.5 ? 2 * ratio * ratio : 1 - Math.pow(-2 * ratio + 2, 2) / 2;
+
+            return prev.positions.map(p => {
+                let nPos = next.positions.find(np => np.memberNumber === p.memberNumber) || p;
+                return { memberNumber: p.memberNumber, x: p.x + (nPos.x - p.x) * ratio, y: p.y + (nPos.y - p.y) * ratio };
+            });
+        }
+
+        // === マウス・タッチ操作イベントのハンドリング ===
+        function handlePointerDown(e) {
+            let rect = canvas.getBoundingClientRect();
+            let canvasX = (e.clientX || e.touches[0].clientX) - rect.left;
+            let canvasY = (e.clientY || e.touches[0].clientY) - rect.top;
+            let dataPos = screenToData(canvasX, canvasY);
+
+            if(userRole !== 'admin') {
+                isPanning = true; startPanX = canvasX; startPanY = canvasY; return;
+            }
+
+            if(currentTool === 'box') {
+                isSelecting = true;
+                selectStart = {dataX: dataPos.x, dataY: dataPos.y, canvasX, canvasY};
+                selectEnd = {dataX: dataPos.x, dataY: dataPos.y, canvasX, canvasY};
+            } else {
+                // タップされた要素の判定
+                let clicked = null;
+                const currentPositions = formations[currentFrameIndex].positions;
+                for(let p of currentPositions) {
+                    let dx = p.x - dataPos.x; let dy = p.y - dataPos.y;
+                    if(Math.sqrt(dx*dx + dy*dy) < 16) { clicked = p.memberNumber; break; }
+                }
+
+                if(clicked) {
+                    draggedNumber = clicked; dragMode = 'member';
+                    if(!selectedNumbers.includes(clicked)) {
+                        if(!e.shiftKey) selectedNumbers = [];
+                        selectedNumbers.push(clicked);
+                    }
+                    dragStartPositions = selectedNumbers.map(num => {
+                        let p = currentPositions.find(pos => pos.memberNumber === num);
+                        return { number: num, x: p.x, y: p.y };
+                    });
+                    selectStart = {dataX: dataPos.x, dataY: dataPos.y, canvasX, canvasY};
+                } else {
+                    isPanning = true; startPanX = canvasX; startPanY = canvasY;
+                    if(!e.shiftKey) selectedNumbers = [];
+                }
+            }
+            updateUI();
+        }
+
+        function handlePointerMove(e) {
+            let rect = canvas.getBoundingClientRect();
+            let canvasX = (e.clientX || (e.touches && e.touches[0].clientX)) - rect.left;
+            let canvasY = (e.clientY || (e.touches && e.touches[0].clientY)) - rect.top;
+            if(!canvasX || !canvasY) return;
+            let dataPos = screenToData(canvasX, canvasY);
+
+            if(isPanning) {
+                offsetX += (canvasX - startPanX); offsetY += (canvasY - startPanY);
+                startPanX = canvasX; startPanY = canvasY; draw();
+            } else if(isSelecting) {
+                selectEnd = {dataX: dataPos.x, dataY: dataPos.y, canvasX, canvasY}; draw();
+            } else if(dragMode === 'member' && draggedNumber) {
+                let dx = dataPos.x - selectStart.dataX; let dy = dataPos.y - selectStart.dataY;
+                let currentPositions = formations[currentFrameIndex].positions;
+                
+                dragStartPositions.forEach(start => {
+                    let p = currentPositions.find(pos => pos.memberNumber === start.number);
+                    if(p) {
+                        p.x = start.x + dx; p.y = start.y + dy;
+                        // 左右対称アシスト機能
+                        if(symmetryAssist && selectedNumbers.length === 1) {
+                            applySymmetryCorrection(p);
+                        }
+                    }
+                });
+                draw();
+            }
+        }
+
+        function handlePointerUp() {
+            if(isSelecting) {
+                isSelecting = false;
+                let xMin = Math.min(selectStart.dataX, selectEnd.dataX);
+                let xMax = Math.max(selectStart.dataX, selectEnd.dataX);
+                let yMin = Math.min(selectStart.dataY, selectEnd.dataY);
+                let yMax = Math.max(selectStart.dataY, selectEnd.dataY);
+                
+                selectedNumbers = [];
+                formations[currentFrameIndex].positions.forEach(p => {
+                    if(p.x >= xMin && p.x <= xMax && p.y >= yMin && p.y <= yMax) selectedNumbers.push(p.memberNumber);
+                });
+                setTool('select');
+            }
+            isPanning = false; draggedNumber = null; dragMode = null;
+            updateUI();
+        }
+
+        function applySymmetryCorrection(p) {
+            let pair = registeredPairs.find(pr => pr.includes(p.memberNumber));
+            if(!pair) return;
+            let otherNum = pair[0] === p.memberNumber ? pair[1] : pair[0];
+            let otherPos = formations[currentFrameIndex].positions.find(pos => pos.memberNumber === otherNum);
+            if(otherPos) {
+                otherPos.x = 800 - p.x; otherPos.y = p.y;
+            }
+        }
+
+        // ホイールによる直感的なズームイン・アウト
+        canvas.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            let zoomFactor = 1.1;
+            if(e.deltaY > 0) zoom /= zoomFactor; else zoom *= zoomFactor;
+            zoom = Math.min(Math.max(0.4, zoom), 4.0);
+            draw();
+        }, {passive:false});
+
+        canvas.addEventListener('mousedown', handlePointerDown);
+        window.addEventListener('mousemove', handlePointerMove);
+        window.addEventListener('mouseup', handlePointerUp);
+        canvas.addEventListener('touchstart', handlePointerDown);
+        window.addEventListener('touchmove', handlePointerMove, {passive:false});
+        window.addEventListener('touchend', handlePointerUp);
+
+        // === コマ（フレーム）編集ロジック ===
+        function addNewFrame() {
+            if(userRole !== 'admin') return;
+            let lastForm = formations[formations.length - 1];
+            let newTime = lastForm ? lastForm.time + 4.0 : 0.0;
+            let newId = 'f_' + Date.now();
+            let newPositions = lastForm ? lastForm.positions.map(p => ({...p})) : [];
+            formations.push({
+                id: newId, name: `コマ${formations.length + 1}`, memo: '新規の指示', time: newTime, positions: newPositions
+            });
+            formations.sort((a,b)=>a.time - b.time);
+            currentFrameIndex = formations.findIndex(f => f.id === newId);
             updateUI();
         }
 
         function deleteCurrentFrame() {
-            if(formations.length <= 1) return alert('これ以上削除できません');
-            if(confirm(`現在のコマを削除しますか？`)) {
-                formations.splice(currentFrameIndex, 1);
-                currentFrameIndex = Math.max(0, currentFrameIndex - 1);
-                updateUI();
-            }
+            if(userRole !== 'admin' || formations.length <= 1) return alert('これ以上削除できません');
+            if(!confirm('現在のコマを削除しますか？')) return;
+            formations.splice(currentFrameIndex, 1);
+            currentFrameIndex = Math.max(0, currentFrameIndex - 1);
+            updateUI();
         }
 
         function promptEditMemo() {
-            const currentForm = formations[currentFrameIndex];
-            const newMemo = prompt("このコマの指示メモ:", currentForm.memo || "");
-            if(newMemo !== null) { currentForm.memo = newMemo; updateUI(); }
+            if(userRole !== 'admin') return;
+            let f = formations[currentFrameIndex];
+            let txt = prompt("このコマの指示指示メモを入力してください:", f.memo || "");
+            if(txt !== null) { f.memo = txt; updateUI(); }
         }
 
-        function applyGroupColor(start, end, color) {
-            for(let i = start; i <= end; i++) memberColors[i] = color;
+        // === 14種類のフォーメーションテンプレート幾何学計算 ===
+        function applyTemplate(type) {
+            if(userRole !== 'admin') return;
+            let currentPositions = formations[currentFrameIndex].positions;
+            let targets = selectedNumbers.length > 0 ? selectedNumbers : currentPositions.map(p => p.memberNumber);
+            targets.sort((a,b)=>a-b);
+
+            let count = targets.length;
+            let cx = 400; let cy = 300;
+
+            targets.forEach((num, i) => {
+                let p = currentPositions.find(pos => pos.memberNumber === num);
+                if(!p) return;
+                let angle = (i / count) * Math.PI * 2;
+                
+                switch(type) {
+                    case 'line':
+                        p.x = 100 + (i / (count - 1 || 1)) * 600; p.y = 300; break;
+                    case 'vertLine':
+                        p.x = 400; p.y = 100 + (i / (count - 1 || 1)) * 400; break;
+                    case 'circle_2':
+                        let r = (i < count/2) ? 120 : 200;
+                        let a = (i % Math.ceil(count/2)) / Math.ceil(count/2) * Math.PI * 2;
+                        p.x = cx + Math.cos(a) * r; p.y = cy + Math.sin(a) * r; break;
+                    case 'circle_3':
+                        let layer = i % 3; let r3 = 90 + layer * 60;
+                        p.x = cx + Math.cos(angle) * r3; p.y = cy + Math.sin(angle) * r3; break;
+                    case 'square_2':
+                        let l = i % 2; let sz = 120 + l * 100;
+                        let sa = (Math.floor(i/2) / Math.ceil(count/2)) * Math.PI * 2;
+                        p.x = cx + Math.max(-1, Math.min(1, Math.cos(sa) * 1.5)) * sz;
+                        p.y = cy + Math.max(-1, Math.min(1, Math.sin(sa) * 1.5)) * sz; break;
+                    case 'radial':
+                        let lines = 6; let lIdx = i % lines; let rDist = 50 + Math.floor(i/lines)*45;
+                        let la = (lIdx / lines) * Math.PI * 2;
+                        p.x = cx + Math.cos(la) * rDist; p.y = cy + Math.sin(la) * rDist; break;
+                    case 'triangles':
+                        let tri = i % 3; let radT = 60 + Math.floor(i/3)*60;
+                        let ta = (tri / 3) * Math.PI * 2 + (Math.floor(i/3) * 0.2);
+                        p.x = cx + Math.cos(ta) * radT; p.y = cy + Math.sin(ta) * radT; break;
+                    case 'diamond':
+                        let da = (i / count) * Math.PI * 2;
+                        p.x = cx + Math.cos(da) * 220; p.y = cy + Math.sin(da) * 150; break;
+                    case 'cross_x':
+                        let d = (i - count/2) / (count/2) * 200;
+                        if(i % 2 === 0) { p.x = cx + d; p.y = cy + d; } else { p.x = cx + d; p.y = cy - d; } break;
+                    case 'chidori_5':
+                        let col = i % 5; let row = Math.floor(i/5);
+                        p.x = 160 + col * 120 + (row % 2 * 60); p.y = 120 + row * 65; break;
+                    case 'outer_box':
+                        let edge = i % 4; let progress = Math.floor(i/4) / (count/4 || 1);
+                        if(edge===0){ p.x = 150 + progress*500; p.y = 100; }
+                        else if(edge===1){ p.x = 650; p.y = 100 + progress*400; }
+                        else if(edge===2){ p.x = 650 - progress*500; p.y = 500; }
+                        else { p.x = 150; p.y = 500 - progress*400; } break;
+                    
+                    // ペア関連のテンプレート配置
+                    case 'pair_side':
+                        let pIdx = Math.floor(i / 2);
+                        let isRight = i % 2;
+                        p.x = 150 + (pIdx / (Math.ceil(count/2) - 1 || 1)) * 500 + (isRight * 35);
+                        p.y = 200 + (pIdx % 3) * 80; break;
+                    case 'pair_front':
+                        let pfIdx = Math.floor(i / 2);
+                        let isBehind = i % 2;
+                        p.x = 150 + (pfIdx / (Math.ceil(count/2) - 1 || 1)) * 500;
+                        p.y = 200 + (pfIdx % 3) * 80 + (isBehind * 40); break;
+                    case 'pair_face':
+                        let pfaIdx = Math.floor(i / 2);
+                        let isTop = i % 2;
+                        p.x = 150 + (pfaIdx / (Math.ceil(count/2) - 1 || 1)) * 500;
+                        p.y = 260 + (isTop * 60); break;
+                }
+            });
             draw();
         }
+
+        // === 属性管理ツール (一括色分け・単体名前) ===
+        function applyGroupColor(start, end, color) {
+            if(userRole !== 'admin') return;
+            for(let i = start; i <= end; i++) { memberColors[i] = color; }
+            draw();
+        }
+
         function applySingleName() {
-            const idx = parseInt(document.getElementById('name-target-idx').value);
-            const val = document.getElementById('name-target-val').value.trim();
-            if(idx >= 1 && idx <= totalCount) {
-                if(val) memberNames[idx] = val; else delete memberNames[idx];
-                buildLoginDropdown(); draw();
+            if(userRole !== 'admin') return;
+            let idx = parseInt(document.getElementById('name-target-idx').value);
+            let val = document.getElementById('name-target-val').value;
+            if(idx >= 1 && idx <= 150) {
+                memberNames[idx] = val; buildLoginDropdown(); draw();
             }
         }
 
+        // === プレイヤー用 オーディオ操作ロジック ===
         function loadAudioFile(input) {
-            const file = input.files[0]; if (!file) return;
-            audio.src = URL.createObjectURL(file); audio.load(); isAudioLoaded = true;
+            const file = input.files[0];
+            if(!file) return;
+            audio.src = URL.createObjectURL(file);
+            isAudioLoaded = true;
+            audio.load();
         }
+
         function togglePlay() {
-            if(!isAudioLoaded) return alert("先に音楽ファイルを選択してください！");
+            if(!isAudioLoaded) return alert('先に音楽ファイルをロードしてください');
             if(audio.paused) {
                 audio.playbackRate = currentPlaybackSpeed; audio.play();
-                document.getElementById('play-pause-btn').innerText = '⏸ 停止';
-            } else { audio.pause(); document.getElementById('play-pause-btn').innerText = '▶ 再生'; }
+                document.getElementById('play-pause-btn').innerText = "⏸ 一時停止";
+            } else {
+                audio.pause(); document.getElementById('play-pause-btn').innerText = "▶ 再生";
+            }
         }
-        function handleSeekBar(val) {
-            if(!isAudioLoaded) return;
-            audio.currentTime = (val / 100) * audio.duration; draw();
-        }
+
         function changePlaybackSpeed(speed) {
-            currentPlaybackSpeed = speed; audio.playbackRate = speed;
+            currentPlaybackSpeed = speed;
+            audio.playbackRate = speed;
             document.getElementById('speed-05').className = speed === 0.5 ? 'btn btn-primary' : 'btn';
             document.getElementById('speed-10').className = speed === 1.0 ? 'btn btn-primary' : 'btn';
         }
+
+        function handleSeekBar(val) {
+            if(!isAudioLoaded || !audio.duration) return;
+            audio.currentTime = (val / 100) * audio.duration;
+        }
+
         function markCurrentTime() {
-            if(!isAudioLoaded) return;
-            formations[currentFrameIndex].time = Math.round(audio.currentTime * 1000) / 1000;
-            formations.sort((a, b) => a.time - b.time); updateUI();
-        }
-
-        function syncAnimationToAudio() {
-            const currentTime = audio.currentTime;
-            let activeIdx = 0;
-            for (let i = 0; i < formations.length; i++) {
-                if (formations[i].time <= currentTime) activeIdx = i;
-            }
-            
-            const timeDisp = document.getElementById('time-display');
-            if(timeDisp) timeDisp.innerText = `${formatTimeFull(currentTime)} / ${isAudioLoaded ? formatTimeFull(audio.duration) : '00:00.000'}`;
-            if(isAudioLoaded && !audio.paused) document.getElementById('seek-bar').value = (currentTime / audio.duration) * 100;
-
-            if(currentFrameIndex !== activeIdx && !audio.paused) {
-                currentFrameIndex = activeIdx;
-                document.getElementById('status-frame').innerText = formations[activeIdx].name;
-                document.getElementById('memo-body-text').innerText = formations[activeIdx].memo || '指示なし';
-                const cards = document.querySelectorAll('.timeline-card');
-                cards.forEach((c, i) => c.className = `timeline-card ${i === activeIdx ? 'active' : ''}`);
-            }
-
-            let nextIdx = activeIdx + 1;
-            const currentForm = formations[activeIdx];
-            if (nextIdx >= formations.length) {
-                renderPositionsAll(currentForm.positions, null, 0); return;
-            }
-            const nextForm = formations[nextIdx];
-            const totalGap = nextForm.time - currentForm.time;
-            let progress = totalGap > 0 ? (currentTime - currentForm.time) / totalGap : 1.0;
-            progress = Math.max(0, Math.min(1, progress));
-            let ease = progress < 0.5 ? 2 * progress * progress : 1 - Math.pow(-2 * progress + 2, 2) / 2;
-            renderPositionsAll(currentForm.positions, nextForm.positions, ease);
-        }
-
-        function formatTimeFull(secs) {
-            const m = Math.floor(secs / 60).toString().padStart(2, '0');
-            const s = Math.floor(secs % 60).toString().padStart(2, '0');
-            const ms = Math.floor((secs % 1) * 1000).toString().padStart(3, '0');
-            return `${m}:${s}.${ms}`;
-        }
-
-        function draw() { syncAnimationToAudio(); }
-        function syncLoopRender() { pulseRadius = (pulseRadius + 0.35) % 20; draw(); requestAnimationFrame(syncLoopRender); }
-
-        function renderPositionsAll(startPos, endPos, ease) {
-            ctx.clearRect(0, 0, 800, 600);
-            ctx.save();
-
-            ctx.translate(400 + offsetX, 300 + offsetY);
-            ctx.scale(zoom, zoom);
-            if(isFlipped) ctx.rotate(Math.PI);
-            ctx.translate(-400, -300);
-
-            if (backgroundImage) {
-                ctx.drawImage(backgroundImage, 0, 0, 800, 600);
-            } else {
-                let grad = ctx.createLinearGradient(0, 0, 0, 600);
-                grad.addColorStop(0, '#0f172a'); grad.addColorStop(1, '#1e293b');
-                ctx.fillStyle = grad; ctx.fillRect(0, 0, 800, 600);
-                ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)'; ctx.lineWidth = 1;
-                for(let i=0; i<=10; i++) {
-                    let y = 150 + i * 40;
-                    ctx.beginPath(); ctx.moveTo(150 - i*12, y); ctx.lineTo(650 + i*12, y); ctx.stroke();
-                }
-            }
-
-            ctx.strokeStyle = 'rgba(239, 68, 68, 0.25)'; ctx.lineWidth = 1.5;
-            ctx.setLineDash([4, 4]); ctx.beginPath(); ctx.moveTo(400, 50); ctx.lineTo(400, 550); ctx.stroke(); ctx.setLineDash([]);
-            ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)'; ctx.lineWidth = 2;
-            ctx.beginPath(); ctx.moveTo(30, 530); ctx.lineTo(770, 530); ctx.stroke();
-
-            for (let i = 1; i <= totalCount; i++) {
-                const sP = startPos.find(p => p.memberNumber === i);
-                const eP = endPos ? endPos.find(p => p.memberNumber === i) : null;
-                if (!sP) continue;
-
-                let cx = eP ? sP.x + (eP.x - sP.x) * ease : sP.x;
-                let cy = eP ? sP.y + (eP.y - sP.y) * ease : sP.y;
-
-                const dx = (cx / 1000) * 800; const dy = (cy / 1000) * 600;
-                const isSelected = selectedNumbers.includes(i);
-                const isMyNum = (userRole === 'performer' && i === myMemberNumber);
-
-                if (isMyNum && eP) {
-                    const ndx = (eP.x / 1000) * 800; const ndy = (eP.y / 1000) * 600;
-                    ctx.strokeStyle = 'rgba(234, 88, 12, 0.6)'; ctx.lineWidth = 3;
-                    ctx.setLineDash([6, 3]); ctx.beginPath(); ctx.moveTo(dx, dy); ctx.lineTo(ndx, ndy); ctx.stroke(); ctx.setLineDash([]);
-                }
-
-                if (isMyNum) {
-                    ctx.save(); ctx.shadowColor = '#ea580c'; ctx.shadowBlur = 15;
-                    ctx.beginPath(); ctx.arc(dx, dy, 16 + pulseRadius/2, 0, Math.PI*2);
-                    ctx.strokeStyle = `rgba(234, 88, 12, ${1 - pulseRadius/20})`; ctx.lineWidth = 3; ctx.stroke(); ctx.restore();
-
-                    ctx.beginPath(); ctx.arc(dx, dy, 18, 0, Math.PI * 2);
-                    ctx.fillStyle = '#ea580c'; ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 3;
-                    ctx.fill(); ctx.stroke();
-                } else {
-                    ctx.beginPath(); ctx.arc(dx, dy, 14, 0, Math.PI * 2);
-                    ctx.fillStyle = memberColors[i] || '#3b82f6';
-                    ctx.strokeStyle = isSelected ? '#ef4444' : '#ffffff';
-                    ctx.lineWidth = isSelected ? 3.5 : 1.5;
-                    ctx.fill(); ctx.stroke();
-                }
-
-                ctx.save(); ctx.translate(dx, dy); if(isFlipped) ctx.rotate(Math.PI);
-                ctx.fillStyle = '#ffffff'; ctx.font = 'bold 11px sans-serif';
-                ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-                ctx.fillText(memberNames[i] ? memberNames[i].substring(0,2) : i, 0, 0.5);
-                ctx.restore();
-            }
-            ctx.restore();
-
-            if (isSelecting && currentTool === 'box') {
-                ctx.strokeStyle = 'rgba(239, 68, 68, 0.8)'; ctx.lineWidth = 2;
-                ctx.fillStyle = 'rgba(239, 68, 68, 0.15)';
-                ctx.fillRect(selectStart.canvasX, selectStart.canvasY, selectEnd.canvasX - selectStart.canvasX, selectEnd.canvasY - selectStart.canvasY);
-                ctx.strokeRect(selectStart.canvasX, selectStart.canvasY, selectEnd.canvasX - selectStart.canvasX, selectEnd.canvasY - selectStart.canvasY);
-            }
-        }
-
-        // 移動・タッチ座標計算のバグ修正
-        function getCoordinates(e) {
-            const rect = canvas.getBoundingClientRect();
-            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-            
-            // 画面サイズに対する実Canvas上の比率計算
-            const canvasX = ((clientX - rect.left) / rect.width) * 800;
-            const canvasY = ((clientY - rect.top) / rect.height) * 600;
-            
-            let tx = canvasX - 400 - offsetX; let ty = canvasY - 300 - offsetY;
-            tx /= zoom; ty /= zoom; if (isFlipped) { tx = -tx; ty = -ty; }
-            tx += 400; ty += 300;
-            
-            return { dataX: tx * (1000 / 800), dataY: ty * (1000 / 600), canvasX, canvasY };
-        }
-
-        function handleStart(e) {
-            const coords = getCoordinates(e);
-            const currentForm = formations[currentFrameIndex];
-            
-            // タップ判定を1000x1000データ空間上で行う
-            const hit = currentForm.positions.find(p => {
-                let dist = Math.sqrt(Math.pow(p.x - coords.dataX, 2) + Math.pow(p.y - coords.dataY, 2));
-                return dist < 35; // 当たり判定範囲
-            });
-
-            if (userRole === 'admin' && hit && currentTool === 'select') {
-                dragMode = 'move_member'; draggedNumber = hit.memberNumber;
-                if (!selectedNumbers.includes(draggedNumber)) selectedNumbers = [draggedNumber];
-                dragStartPositions = currentForm.positions.map(p => ({...p}));
-                startPanX = coords.dataX; startPanY = coords.dataY;
-            } else if (userRole === 'admin' && currentTool === 'box') {
-                dragMode = 'select_box'; isSelecting = true; selectStart = coords; selectEnd = coords;
-            } else {
-                dragMode = 'pan'; isPanning = true;
-                const clX = e.touches ? e.touches[0].clientX : e.clientX;
-                const clY = e.touches ? e.touches[0].clientY : e.clientY;
-                startPanX = clX - offsetX; startPanY = clY - offsetY;
-            }
-        }
-
-        function handleMove(e) {
-            if (dragMode === null) return;
-            const coords = getCoordinates(e);
-            const currentForm = formations[currentFrameIndex];
-
-            if (dragMode === 'move_member' && draggedNumber !== null) {
-                if (e.cancelable) e.preventDefault();
-                const dx = coords.dataX - startPanX; const dy = coords.dataY - startPanY;
-                selectedNumbers.forEach(num => {
-                    const orig = dragStartPositions.find(p => p.memberNumber === num);
-                    const tgt = currentForm.positions.find(p => p.memberNumber === num);
-                    if (orig && tgt) {
-                        tgt.x = Math.max(10, Math.min(990, orig.x + dx));
-                        tgt.y = Math.max(10, Math.min(990, orig.y + dy));
-                        if (symmetryAssist && selectedNumbers.length === 1) {
-                            const symNum = (num % 2 === 1) ? num + 1 : num - 1;
-                            const symTgt = currentForm.positions.find(p => p.memberNumber === symNum);
-                            if (symTgt) { symTgt.x = 1000 - tgt.x; symTgt.y = tgt.y; }
-                        }
-                    }
-                });
-            } else if (dragMode === 'select_box' && isSelecting) {
-                if (e.cancelable) e.preventDefault(); selectEnd = coords;
-            } else if (dragMode === 'pan' && isPanning) {
-                if (e.cancelable) e.preventDefault();
-                const clX = e.touches ? e.touches[0].clientX : e.clientX;
-                const clY = e.touches ? e.touches[0].clientY : e.clientY;
-                offsetX = clX - startPanX; offsetY = clY - startPanY;
-            }
-        }
-
-        function handleEnd() {
-            if (dragMode === 'select_box' && isSelecting) {
-                const currentForm = formations[currentFrameIndex];
-                const xMin = Math.min(selectStart.dataX, selectEnd.dataX); const xMax = Math.max(selectStart.dataX, selectEnd.dataX);
-                const yMin = Math.min(selectStart.dataY, selectEnd.dataY); const yMax = Math.max(selectStart.dataY, selectEnd.dataY);
-                selectedNumbers = [];
-                currentForm.positions.forEach(pos => {
-                    if (pos.x >= xMin && pos.x <= xMax && pos.y >= yMin && pos.y <= yMax) selectedNumbers.push(pos.memberNumber);
-                });
-                isSelecting = false; setTool('select');
-            }
-            dragMode = null; draggedNumber = null; isPanning = false; isSelecting = false; updateUI();
-        }
-
-        function resizeCanvas() {
-            canvas.width = 800; canvas.height = 600; draw();
-        }
-
-        window.addEventListener('resize', resizeCanvas);
-        canvas.addEventListener('mousedown', handleStart); canvas.addEventListener('mousemove', handleMove); canvas.addEventListener('mouseup', handleEnd); canvas.addEventListener('mouseleave', handleEnd);
-        canvas.addEventListener('touchstart', handleStart, { passive: false }); canvas.addEventListener('touchmove', handleMove, { passive: false }); canvas.addEventListener('touchend', handleEnd);
-        canvas.addEventListener('wheel', e => { e.preventDefault(); if (e.deltaY < 0) zoom = Math.min(4.0, zoom * 1.05); else zoom = Math.max(0.6, zoom / 1.05); }, { passive: false });
-        function toggleFullScreen() { document.body.classList.toggle('fullscreen-mode'); offsetX = 0; offsetY = 0; zoom = 1.0; resizeCanvas(); }
-
-        window.applyTemplate = function(type) {
             if(userRole !== 'admin') return;
-            const currentForm = formations[currentFrameIndex];
-            currentForm.positions = [];
-            let baseCoords = [];
+            formations[currentFrameIndex].time = audio.currentTime || 0.0;
+            formations.sort((a,b)=>a.time - b.time);
+            updateUI();
+        }
 
-            if (type === 'line') {
-                for(let i=0; i<totalCount; i++) baseCoords.push({ x: 150 + (i / (totalCount-1)) * 700, y: 400 });
-            } else if (type === 'vertLine') {
-                for(let i=0; i<totalCount; i++) baseCoords.push({ x: 400, y: 150 + (i / (totalCount-1)) * 400 });
-            } else if (type === 'circle_2') {
-                for(let i=0; i<30; i++) { let r = (i/30)*2*Math.PI; baseCoords.push({ x: 400 + Math.cos(r)*130, y: 350 + Math.sin(r)*110 }); }
-                for(let i=0; i<40; i++) { let r = (i/40)*2*Math.PI; baseCoords.push({ x: 400 + Math.cos(r)*240, y: 350 + Math.sin(r)*200 }); }
-            } else if (type === 'circle_3') {
-                for(let i=0; i<15; i++) { let r = (i/15)*2*Math.PI; baseCoords.push({ x: 400 + Math.cos(r)*80, y: 350 + Math.sin(r)*70 }); }
-                for(let i=0; i<25; i++) { let r = (i/25)*2*Math.PI; baseCoords.push({ x: 400 + Math.cos(r)*160, y: 350 + Math.sin(r)*130 }); }
-                for(let i=0; i<30; i++) { let r = (i/30)*2*Math.PI; baseCoords.push({ x: 400 + Math.cos(r)*250, y: 350 + Math.sin(r)*210 }); }
-            } else if (type === 'square_2') {
-                for(let i=0; i<28; i++) {
-                    let rate = i / 28; let x = 300, y = 250;
-                    if(rate < 0.25) { x = 300 + (rate/0.25)*200; y = 250; }
-                    else if(rate < 0.5) { x = 500; y = 250 + ((rate-0.25)/0.25)*180; }
-                    else if(rate < 0.75) { x = 500 - ((rate-0.5)/0.25)*200; y = 430; }
-                    else { x = 300; y = 430 - ((rate-0.75)/0.25)*180; }
-                    baseCoords.push({x, y});
+        // オーディオのタイムアップデートに基づく同期機構
+        audio.addEventListener('timeupdate', () => {
+            if(!audio.duration) return;
+            let prog = (audio.currentTime / audio.duration) * 100;
+            document.getElementById('seek-bar').value = prog;
+            document.getElementById('time-display').innerText = `${formatTimeFull(audio.currentTime)} / ${formatTimeFull(audio.duration)}`;
+            
+            // 現在時刻に合わせてアクティブなコマを追従
+            if(audio.currentTime > 0) {
+                let activeIdx = 0;
+                for(let i=0; i<formations.length; i++) {
+                    if(formations[i].time <= audio.currentTime) activeIdx = i;
                 }
-                for(let i=0; i<42; i++) {
-                    let rate = i / 42; let x = 180, y = 150;
-                    if(rate < 0.25) { x = 180 + (rate/0.25)*440; y = 150; }
-                    else if(rate < 0.5) { x = 620; y = 150 + ((rate-0.25)/0.25)*360; }
-                    else if(rate < 0.75) { x = 620 - ((rate-0.5)/0.25)*440; y = 510; }
-                    else { x = 180; y = 510 - ((rate-0.75)/0.25)*360; }
-                    baseCoords.push({x, y});
-                }
-            } else if (type === 'radial') {
-                for(let i=0; i<totalCount; i++) {
-                    let lineIdx = i % 8; let step = Math.floor(i / 8);
-                    let angle = (lineIdx / 8) * 2 * Math.PI; let dist = 50 + step * 48;
-                    baseCoords.push({ x: 400 + Math.cos(angle)*dist*1.2, y: 330 + Math.sin(angle)*dist });
-                }
-            } else if (type === 'triangles') {
-                let centers = [{x:250, y:230}, {x:550, y:230}, {x:250, y:450}, {x:550, y:450}];
-                for(let i=0; i<totalCount; i++) {
-                    let c = centers[i % 4]; let s = Math.floor(i / 4);
-                    let ox = (s % 3) * 35 - 35; let oy = Math.floor(s / 3) * 35 - 35;
-                    baseCoords.push({ x: c.x + ox, y: c.y + oy });
-                }
-            } else if (type === 'diamond') {
-                for(let i=0; i<totalCount; i++) {
-                    let rate = i / totalCount; let angle = rate * 2 * Math.PI;
-                    let x = 400 + Math.sign(Math.cos(angle)) * Math.pow(Math.abs(Math.cos(angle)), 1) * 260;
-                    let y = 330 + Math.sign(Math.sin(angle)) * Math.pow(Math.abs(Math.sin(angle)), 1) * 210;
-                    baseCoords.push({x, y});
-                }
-            } else if (type === 'cross_x') {
-                for(let i=0; i<35; i++) baseCoords.push({ x: 180 + (i/34)*440, y: 150 + (i/34)*360 });
-                for(let i=0; i<35; i++) baseCoords.push({ x: 620 - (i/34)*440, y: 150 + (i/34)*360 });
-            } else if (type === 'chidori_5') {
-                for(let i=0; i<totalCount; i++) {
-                    let col = i % 5; let row = Math.floor(i / 5);
-                    let x = 180 + col * 110; let y = 160 + row * 34 + (col % 2 * 17);
-                    baseCoords.push({x, y});
-                }
-            } else if (type === 'outer_box') {
-                for(let i=0; i<totalCount; i++) {
-                    let rate = i / totalCount; let x = 120, y = 130;
-                    if(rate < 0.25) { x = 120 + (rate/0.25)*560; y = 130; }
-                    else if(rate < 0.5) { x = 680; y = 130 + ((rate-0.25)/0.25)*380; }
-                    else if(rate < 0.75) { x = 680 - ((rate-0.5)/0.25)*560; y = 510; }
-                    else { x = 120; y = 510 - ((rate-0.75)/0.25)*380; }
-                    baseCoords.push({x, y});
-                }
-            } else if (type === 'pair_side') {
-                for(let i=0; i<totalCount; i++) {
-                    let row = Math.floor(i / 24); let col = i % 24;
-                    let x = 130 + col * 24 + (Math.floor(col/2)*12); let y = 220 + row * 70;
-                    baseCoords.push({x, y});
-                }
-            } else if (type === 'pair_front') {
-                for(let i=0; i<totalCount; i++) {
-                    let isBack = i >= 35; let idx = i % 35;
-                    let x = 130 + idx * 16; let y = isBack ? 420 : 260;
-                    baseCoords.push({x, y});
-                }
-            } else if (type === 'pair_face') {
-                for(let i=0; i<totalCount; i++) {
-                    let isRight = i >= 35; let idx = i % 35;
-                    let x = isRight ? 560 + (idx%5)*30 : 140 + (idx%5)*30; let y = 180 + Math.floor(idx/5)*50;
-                    baseCoords.push({x, y});
+                if(activeIdx !== currentFrameIndex) {
+                    currentFrameIndex = activeIdx;
+                    document.getElementById('status-frame').innerText = formations[currentFrameIndex].name;
+                    document.getElementById('memo-body-text').innerText = formations[currentFrameIndex].memo || '指示なし';
                 }
             }
+            draw();
+        });
 
-            let orderedMembers = [];
-            if(['pair_side', 'pair_front', 'pair_face'].includes(type)) {
-                let unassigned = []; for(let i=1; i<=totalCount; i++) unassigned.push(i);
-                registeredPairs.forEach(pair => {
-                    if(unassigned.includes(pair[0]) && unassigned.includes(pair[1])) {
-                        orderedMembers.push(pair[0]); orderedMembers.push(pair[1]);
-                        unassigned = unassigned.filter(m => m !== pair[0] && m !== pair[1]);
-                    }
-                });
-                orderedMembers = [...orderedMembers, ...unassigned];
-            } else {
-                for(let i=1; i<=totalCount; i++) orderedMembers.push(i);
-            }
+        // アニメーションループ (パルス描写用)
+        function animationLoop() {
+            pulseRadius += 0.2; if(pulseRadius > 10) pulseRadius = 0;
+            if(userRole === 'performer') draw();
+            requestAnimationFrame(animationLoop);
+        }
 
-            orderedMembers.forEach((mNum, idx) => {
-                if(idx < baseCoords.length) currentForm.positions.push({ memberNumber: mNum, x: baseCoords[idx].x, y: baseCoords[idx].y });
-            });
-            selectedNumbers = []; updateUI();
+        function toggleFullScreen() {
+            document.body.classList.toggle('fullscreen-mode');
+            resizeCanvas();
+        }
+
+        // アプリ起動時のイニシャライズ
+        window.addEventListener('resize', resizeCanvas);
+        window.onload = () => {
+            loadFromCloud();
+            requestAnimationFrame(animationLoop);
         };
-
-        loadFromCloud();
-        resizeCanvas();
-        requestAnimationFrame(syncLoopRender);
     </script>
 </body>
 </html>
