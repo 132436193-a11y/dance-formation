@@ -144,7 +144,6 @@
                     <button id="tool-select" class="btn btn-primary" onclick="setTool('select')">⬈ 選択移動</button>
                     <button id="tool-box" class="btn" onclick="setTool('box')">🔲 範囲選択</button>
                 </div>
-                <!-- ↩ 戻る / ↪ 進む ボタンを追加 -->
                 <div class="grid-2">
                     <button id="btn-undo" class="btn" onclick="undo()" disabled>↩ 戻る</button>
                     <button id="btn-redo" class="btn" onclick="redo()" disabled>↪ 進む</button>
@@ -296,7 +295,6 @@
         let currentPlaybackSpeed = 1.0;
         let currentTool = 'select'; 
         
-        // === ↩ 履歴（Undo/Redo）管理用スタック ===
         let undoStack = [];
         let redoStack = [];
 
@@ -381,7 +379,7 @@
                 document.getElementById('app-title-text').innerText = `出演者画面: ${myMemberNumber}番`;
             }
             selectedNumbers = [];
-            clearHistory(); // ロール切り替え時にスタックをリセット
+            clearHistory(); 
             renderPairListUI();
             renderCustomTemplateListUI();
             resizeCanvas();
@@ -432,7 +430,7 @@
             const currentForm = formations[currentFrameIndex];
             const temp = customTemplates[idx];
             if(!temp) return;
-            saveHistory(); // 操作前に履歴を保存
+            saveHistory(); 
             currentForm.positions = temp.positions.map(p => ({...p}));
             selectedNumbers = [];
             updateUI();
@@ -494,9 +492,7 @@
         function saveHistory() {
             const currentForm = formations[currentFrameIndex];
             if (!currentForm) return;
-            // 現在の配置情報をディープコピーしてUndoスタックへプッシュ
             undoStack.push(JSON.stringify(currentForm.positions));
-            // 新規操作が行われたためRedoスタックはクリア
             redoStack = [];
             updateUndoRedoButtonsUI();
         }
@@ -506,9 +502,7 @@
             const currentForm = formations[currentFrameIndex];
             if (!currentForm) return;
 
-            // 現在の状態をRedoスタックに退避
             redoStack.push(JSON.stringify(currentForm.positions));
-            // Undoからポップして座標を復元
             currentForm.positions = JSON.parse(undoStack.pop());
             
             updateUndoRedoButtonsUI();
@@ -520,9 +514,7 @@
             const currentForm = formations[currentFrameIndex];
             if (!currentForm) return;
 
-            // 現在の状態をUndoスタックに積む
             undoStack.push(JSON.stringify(currentForm.positions));
-            // Redoからポップして座標を復元
             currentForm.positions = JSON.parse(redoStack.pop());
 
             updateUndoRedoButtonsUI();
@@ -588,7 +580,7 @@
                 audio.currentTime = formations[idx].time;
             }
             selectedNumbers = [];
-            clearHistory(); // コマ移動時は履歴スタックを初期化
+            clearHistory(); 
             updateUI();
         }
 
@@ -649,7 +641,7 @@
             let targets = selectedNumbers.length > 0 ? selectedNumbers : currentForm.positions.map(p => p.memberNumber);
             let count = targets.length;
 
-            saveHistory(); // テンプレート変形前に現在の状態を保存
+            saveHistory(); 
 
             targets.forEach((num, index) => {
                 let pos = currentForm.positions.find(p => p.memberNumber === num);
@@ -858,7 +850,7 @@
                 ctx.beginPath(); ctx.arc(coords.x, coords.y, 13, 0, Math.PI*2); ctx.fill();
                 
                 ctx.strokeStyle = isMe ? '#ffffff' : '#111827'; ctx.lineWidth = 2;
-                ctx.beginPath(); ctx.arc(coords.x, coords.y, 13, 0, Math.PI*2); ctx.stroke();
+                ctx.beginPath(); ctx.arc(coords.x, coords.y, 13, 0, Math.PI*2); stroke();
 
                 ctx.fillStyle = '#ffffff';
                 ctx.font = 'bold 10px Arial'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
@@ -888,7 +880,7 @@
             return { x: canvasX, y: canvasY };
         }
 
-        // === 🖱️ マウス・タッチイベント制御 ===
+        // === 🖱️ マウス・タッチイベント制御（修正版） ===
         function getEventCanvasPos(e) {
             const rect = canvas.getBoundingClientRect();
             let clientX = e.touches ? e.touches[0].clientX : e.clientX;
@@ -903,7 +895,6 @@
             if(userRole !== 'admin') return;
             const pos = getEventCanvasPos(e);
             const logicPos = getLogicCoords(pos.x, pos.y);
-
             const currentForm = formations[currentFrameIndex];
             draggedNumber = null;
             
@@ -913,13 +904,15 @@
                 if(dist <= 15) { draggedNumber = p.memberNumber; break; }
             }
 
-            if (currentTool === 'select' && draggedNumber !== null) {
-                saveHistory(); // 🔴 ドラッグ移動の直前に状態を履歴保存
+            // 「選択移動ツール」または「範囲選択した後に選ばれたメンバーを掴んだ」場合
+            if ((currentTool === 'select' || selectedNumbers.includes(draggedNumber)) && draggedNumber !== null) {
+                saveHistory(); // 操作前の履歴保存
                 dragMode = 'move';
                 if (!selectedNumbers.includes(draggedNumber)) { selectedNumbers = [draggedNumber]; }
                 dragStartPositions = currentForm.positions.map(p => ({...p}));
                 selectStart = logicPos; 
             } else {
+                // メンバーがいない虚空をドラッグした、または範囲選択ツールの場合は新規に囲む
                 dragMode = 'box';
                 isSelecting = true;
                 selectStart = pos;
@@ -975,6 +968,10 @@
         }
 
         function handleEnd() {
+            // 【★修正ポイント】範囲選択（box）を終えた際、メンバーが選ばれていれば自動で「選択移動モード」に移行
+            if (dragMode === 'box' && selectedNumbers.length > 0) {
+                setTool('select');
+            }
             dragMode = null;
             isSelecting = false;
             draggedNumber = null;
