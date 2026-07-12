@@ -139,6 +139,15 @@
         
         <div id="sidebar" class="sidebar">
             <div class="sidebar-section">
+                <div class="section-title">全体設定</div>
+                <div style="display:flex; gap:4px; align-items:center;">
+                    <span style="font-size:11px;">👥 総人数:</span>
+                    <input type="number" id="global-total-count" value="70" min="1" max="150" style="width:50px; text-align:center;">
+                    <button class="btn btn-orange" style="padding:4px 6px;" onclick="changeTotalCountFromUI()">確定初期化</button>
+                </div>
+            </div>
+
+            <div class="sidebar-section">
                 <div class="section-title">編集ツール</div>
                 <div class="grid-2">
                     <button id="tool-select" class="btn btn-primary" onclick="setTool('select')">⬈ 選択移動</button>
@@ -274,7 +283,7 @@
     <script>
         const ADMIN_PASSWORD = 'matutaku'; 
         let userRole = 'admin'; 
-        let myMemberNumber = 28;
+        let myMemberNumber = 1;
         let isFlipped = false; 
         let symmetryAssist = false; 
         let backgroundImage = null;
@@ -284,7 +293,7 @@
         let totalCount = 70;
         let memberColors = {};
         let memberNames = {};
-        let registeredPairs = [[1,2], [28,30], [15,16]]; 
+        let registeredPairs = []; 
         let customTemplates = []; 
 
         let formations = [
@@ -315,19 +324,43 @@
         let isSelecting = false;
         let pulseRadius = 0;
 
+        // === 👥 初期位置生成システム（完全に人が出るように修正） ===
         function initInitialPositions() {
-            formations[0].positions = [];
+            formations[currentFrameIndex].positions = [];
             for(let i = 0; i < totalCount; i++) {
-                let x = 160 + (i % 10) * 55;
-                let y = 180 + Math.floor(i / 10) * 55;
-                formations[0].positions.push({ memberNumber: i + 1, x, y });
+                let x = 80 + (i % 12) * 55;
+                let y = 100 + Math.floor(i / 12) * 55;
+                formations[currentFrameIndex].positions.push({ memberNumber: i + 1, x, y });
             }
+            // 初期カラー割り当て
             for(let i = 1; i <= totalCount; i++) {
-                if(i <= 10) memberColors[i] = '#3b82f6';
-                else if(i <= 25) memberColors[i] = '#10b981';
-                else if(i <= 40) memberColors[i] = '#a855f7';
-                else if(i <= 55) memberColors[i] = '#eab308';
-                else memberColors[i] = '#ec4899';
+                if(!memberColors[i]) {
+                    if(i <= 10) memberColors[i] = '#3b82f6';
+                    else if(i <= 25) memberColors[i] = '#10b981';
+                    else if(i <= 40) memberColors[i] = '#a855f7';
+                    else if(i <= 55) memberColors[i] = '#eab308';
+                    else memberColors[i] = '#ec4899';
+                }
+            }
+            if (document.getElementById('status-total')) {
+                document.getElementById('status-total').innerText = totalCount + "人";
+            }
+        }
+
+        // UIから総人数を変更する処理
+        function changeTotalCountFromUI() {
+            if(userRole !== 'admin') return;
+            const newCount = parseInt(document.getElementById('global-total-count').value);
+            if(isNaN(newCount) || newCount < 1 || newCount > 150) {
+                alert("総人数は1〜150人の間で指定してください。");
+                return;
+            }
+            if(confirm(`総人数を ${newCount} 人に変更して、現在の配置を初期化します。よろしいですか？`)) {
+                totalCount = newCount;
+                saveHistory();
+                initInitialPositions();
+                buildLoginDropdown();
+                updateUI();
             }
         }
 
@@ -488,7 +521,6 @@
             }
         }
 
-        // === ↩ 履歴管理エンジン（Undo / Redo） ===
         function saveHistory() {
             const currentForm = formations[currentFrameIndex];
             if (!currentForm) return;
@@ -501,10 +533,8 @@
             if (undoStack.length === 0) return;
             const currentForm = formations[currentFrameIndex];
             if (!currentForm) return;
-
             redoStack.push(JSON.stringify(currentForm.positions));
             currentForm.positions = JSON.parse(undoStack.pop());
-            
             updateUndoRedoButtonsUI();
             updateUI();
         }
@@ -513,17 +543,14 @@
             if (redoStack.length === 0) return;
             const currentForm = formations[currentFrameIndex];
             if (!currentForm) return;
-
             undoStack.push(JSON.stringify(currentForm.positions));
             currentForm.positions = JSON.parse(redoStack.pop());
-
             updateUndoRedoButtonsUI();
             updateUI();
         }
 
         function clearHistory() {
-            undoStack = [];
-            redoStack = [];
+            undoStack = []; redoStack = [];
             updateUndoRedoButtonsUI();
         }
 
@@ -534,7 +561,6 @@
             if (redoBtn) redoBtn.disabled = (redoStack.length === 0);
         }
 
-        // === 🛠️ コマ（タイムライン）編集処理 ===
         function updateUI() {
             const currentForm = formations[currentFrameIndex];
             if(!currentForm) return;
@@ -544,6 +570,7 @@
 
             document.getElementById('status-frame').innerText = currentForm.name;
             document.getElementById('status-time').innerText = formatTimeFull(currentForm.time);
+            document.getElementById('status-total').innerText = totalCount + "人";
             document.getElementById('status-selected-info').innerText = (selectedNumbers.length > 0) ? `(選択:${selectedNumbers.length}人)` : '';
 
             if(userRole === 'performer') calculateSurroundingMembers(currentForm.positions);
@@ -631,7 +658,6 @@
             updateUI();
         }
 
-        // === 🧮 幾何学テンプレート適用エンジン ===
         function applyTemplate(type) {
             if(userRole !== 'admin') return;
             const currentForm = formations[currentFrameIndex];
@@ -726,7 +752,6 @@
             }
         }
 
-        // === 👥 出演者用: 周辺ディスタンス算出処理 ===
         function calculateSurroundingMembers(positions) {
             const myPos = positions.find(p => p.memberNumber === myMemberNumber);
             if (!myPos) return;
@@ -772,7 +797,6 @@
             }
         }
 
-        // === 🎨 キャンバス2D描画システム ===
         function resizeCanvas() {
             const container = canvas.parentElement;
             const aspect = BASE_WIDTH / BASE_HEIGHT;
@@ -817,7 +841,7 @@
             }
 
             const currentForm = formations[currentFrameIndex];
-            if(!currentForm) { ctx.restore(); return; }
+            if(!currentForm || !currentForm.positions) { ctx.restore(); return; }
 
             ctx.strokeStyle = 'rgba(234, 88, 12, 0.4)'; ctx.lineWidth = 3; ctx.setLineDash([4, 4]);
             registeredPairs.forEach(pair => {
@@ -850,7 +874,7 @@
                 ctx.beginPath(); ctx.arc(coords.x, coords.y, 13, 0, Math.PI*2); ctx.fill();
                 
                 ctx.strokeStyle = isMe ? '#ffffff' : '#111827'; ctx.lineWidth = 2;
-                ctx.beginPath(); ctx.arc(coords.x, coords.y, 13, 0, Math.PI*2); stroke();
+                ctx.beginPath(); ctx.arc(coords.x, coords.y, 13, 0, Math.PI*2); ctx.stroke();
 
                 ctx.fillStyle = '#ffffff';
                 ctx.font = 'bold 10px Arial'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
@@ -880,7 +904,6 @@
             return { x: canvasX, y: canvasY };
         }
 
-        // === 🖱️ マウス・タッチイベント制御（修正版） ===
         function getEventCanvasPos(e) {
             const rect = canvas.getBoundingClientRect();
             let clientX = e.touches ? e.touches[0].clientX : e.clientX;
@@ -898,21 +921,21 @@
             const currentForm = formations[currentFrameIndex];
             draggedNumber = null;
             
+            if(!currentForm || !currentForm.positions) return;
+
             for(let i = currentForm.positions.length - 1; i >= 0; i--) {
                 let p = currentForm.positions[i];
                 let dist = Math.sqrt((p.x - logicPos.x)**2 + (p.y - logicPos.y)**2);
                 if(dist <= 15) { draggedNumber = p.memberNumber; break; }
             }
 
-            // 「選択移動ツール」または「範囲選択した後に選ばれたメンバーを掴んだ」場合
             if ((currentTool === 'select' || selectedNumbers.includes(draggedNumber)) && draggedNumber !== null) {
-                saveHistory(); // 操作前の履歴保存
+                saveHistory(); 
                 dragMode = 'move';
                 if (!selectedNumbers.includes(draggedNumber)) { selectedNumbers = [draggedNumber]; }
                 dragStartPositions = currentForm.positions.map(p => ({...p}));
                 selectStart = logicPos; 
             } else {
-                // メンバーがいない虚空をドラッグした、または範囲選択ツールの場合は新規に囲む
                 dragMode = 'box';
                 isSelecting = true;
                 selectStart = pos;
@@ -968,7 +991,6 @@
         }
 
         function handleEnd() {
-            // 【★修正ポイント】範囲選択（box）を終えた際、メンバーが選ばれていれば自動で「選択移動モード」に移行
             if (dragMode === 'box' && selectedNumbers.length > 0) {
                 setTool('select');
             }
@@ -986,7 +1008,6 @@
         canvas.addEventListener('touchmove', handleMove, {passive: true});
         window.addEventListener('touchend', handleEnd);
 
-        // === 🎵 音源＆アニメーション同期制御 ===
         function loadAudioFile(input) {
             const file = input.files[0];
             if (!file) return;
@@ -1063,7 +1084,6 @@
             requestAnimationFrame(animatePulse);
         }
 
-        // === 🌐 GAS連携クラウド処理 ===
         async function loadFromCloud() {
             if (!CLOUD_DATABASE_URL || CLOUD_DATABASE_URL.includes("ここにデプロイ")) {
                 initInitialPositions(); buildLoginDropdown(); renderPairListUI(); renderCustomTemplateListUI(); updateUI(); return;
@@ -1073,6 +1093,7 @@
                 const data = await res.json();
                 if (data && data.status !== "empty" && data.formations) {
                     totalCount = data.totalCount || 70;
+                    document.getElementById('global-total-count').value = totalCount;
                     memberColors = data.memberColors || {};
                     memberNames = data.memberNames || {};
                     formations = data.formations;
